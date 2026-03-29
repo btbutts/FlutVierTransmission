@@ -65,3 +65,23 @@ export async function callRpc<T = unknown>(
 
   return data.arguments;
 }
+
+// Helper to ensure session ID is set
+// (prevents races in concurrent calls like Promise.all)
+export async function ensureSessionId(): Promise<void> {
+  if (!sessionId) {
+    const url = import.meta.env.VITE_TRANSMISSION_RPC_URL ?? '/transmission/rpc';
+    const headers: HeadersInit = { 'Content-Type': 'application/json' };
+    const res = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ method: 'session-get', arguments: {} })  // Dummy valid request
+    });
+    if (res.status === 409) {
+      sessionId = res.headers.get('X-Transmission-Session-Id') || '';
+      if (!sessionId) {
+        throw new Error('Failed to get Transmission session ID');
+      }
+    }
+  }
+}

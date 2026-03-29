@@ -2,7 +2,7 @@
 // Reactive state using Svelte 5 runes + stores (mirrors original Flood's state management)
 
 import { writable } from 'svelte/store';
-import { callRpc } from './rpc';
+import { callRpc, ensureSessionId } from './rpc';
 import type { Torrent } from './types';
 
 export const torrents = writable<Torrent[]>([]);
@@ -21,12 +21,14 @@ export async function refreshAll() {
   isLoading.set(true);
   error.set(null);
 
+  await ensureSessionId();  // Ensure session before parallel calls
+
   try {
     const [torrentRes, sessionRes] = await Promise.all([
-      callRpc<{ torrents?: Torrent[] }>('torrent_get', { 
+      callRpc<{ torrents?: Torrent[] }>('torrent-get', { 
         fields: torrentFields 
       }),
-      callRpc('session_get')
+      callRpc('session-get')
     ]);
 
     torrents.set(torrentRes.torrents ?? []);
@@ -44,7 +46,7 @@ export async function refreshAll() {
 export async function addTorrent(
     filename: string,
     options: { paused?: boolean; downloadDir?: string } = {}) {
-  return callRpc('torrent_add', {
+  return callRpc('torrent-add', {
     filename,
     paused: options.paused ?? false,
     'download-dir': options.downloadDir
