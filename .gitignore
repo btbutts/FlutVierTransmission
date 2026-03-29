@@ -26,3 +26,5 @@ vite.config.ts.timestamp-*
 FlutVierTransmission-ts.code-workspace
 .vscode
 
+# Other
+grok-responses/**
