@@ -1,10 +1,11 @@
+import tailwindcss from '@tailwindcss/vite';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig, loadEnv } from 'vite';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), 'VITE_');
 
-  // HTTP RPC Basic Auth (if enabled in Transmission) - uncomment and set your credentials
+  // HTTP RPC Basic Auth (if enabled in Transmission)
   const rpcAuthCreds = {
     username: env.VITE_TRANSMISSION_USERNAME || '',
     password: env.VITE_TRANSMISSION_PASSWORD || ''
@@ -15,8 +16,13 @@ export default defineConfig(({ mode }) => {
     : undefined;
 
   return {
-    plugins: [sveltekit()],
-
+    plugins: [
+      tailwindcss(),
+      sveltekit()
+    ],
+    css: {
+      devSourcemap: true
+    },
     server: {
       proxy: {
         '/transmission': {
@@ -39,6 +45,11 @@ export default defineConfig(({ mode }) => {
                 ).toString('base64');
                 proxyReq.setHeader('Authorization', `Basic ${basicAuth}`);
               }
+            });
+            proxy.on('proxyRes', (proxyRes) => {
+              proxyRes.headers['Access-Control-Allow-Origin'] = '*';
+              proxyRes.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS';
+              proxyRes.headers['Access-Control-Allow-Headers'] = 'Content-Type, X-Transmission-Session-Id';
             });
           }
         }

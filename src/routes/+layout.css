@@ -1,0 +1,14 @@
+/* src/routes/+layout.css - Tailwind v4 entrypoint (NEW FILE) */
+@import "tailwindcss";
+
+/* Ensure consistent background and blur */
+body {
+    background-color: rgba(248, 250, 252, 1); /* gray-50 */
+    backdrop-filter: blur(8px); /* Mimics Tailwind's backdrop-blur-md */
+}
+
+@media (prefers-color-scheme: dark) {
+    body {
+        background-color: rgba(31, 41, 55, 0.8); /* gray-800/80 */
+    }
+}

@@ -1,0 +1,2 @@
+/* src/app.css - Tailwind v4 entrypoint (NEW FILE) */
+@import "tailwindcss";

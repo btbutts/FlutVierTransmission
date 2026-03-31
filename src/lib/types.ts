@@ -2,6 +2,19 @@
 // Transmission RPC torrent object shape (based on official RPC spec)
 // We only define the fields we're currently using; expand as we add more UI features
 
+export interface File {
+  bytes: number;
+  name: string;
+  length: number;  // Full file size
+}
+
+export interface FileStat {
+  bytesCompleted: number;
+  desired: boolean;
+  have: number;
+  priority: number;  // -2 skip, -1 low, 0 normal, 1 high
+}
+
 export interface Torrent {
   id: number;
   name: string;
@@ -15,7 +28,10 @@ export interface Torrent {
   downloadDir: string;
   error: number;
   errorString?: string;
-  // files and fileStats are more complex; we'll handle them later when we add per-torrent file view
-  files?: unknown[];
-  fileStats?: unknown[];
+  // files and fileStats are more complex;
+  // we'll handle them later when we add per-torrent file view
+  files?: File[];
+  fileStats?: FileStat[];
+  uploadedEver: number;     // bytes
+  downloadedEver: number;   // bytes
 }

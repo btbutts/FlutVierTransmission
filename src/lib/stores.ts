@@ -5,6 +5,10 @@ import { writable } from 'svelte/store';
 import { callRpc, ensureSessionId } from './rpc';
 import type { Torrent } from './types';
 
+// Add after existing stores
+export const selectedTorrents = writable<number[]>([]);
+export const currentTorrent = writable<Torrent | null>(null);
+
 export const torrents = writable<Torrent[]>([]);
 export const session = writable<Record<string, unknown>>({});
 export const isLoading = writable(false);
@@ -51,4 +55,89 @@ export async function addTorrent(
     paused: options.paused ?? false,
     'download-dir': options.downloadDir
   });
+}
+
+// Torrent actions (matches Flood: start/stop/pause/remove)
+export async function startTorrents(ids: number[]) {
+  return callRpc('torrent-start', { ids });
+}
+
+export async function stopTorrents(ids: number[]) {
+  return callRpc('torrent-stop', { ids });
+}
+
+export async function removeTorrents(ids: number[], deleteData = false) {
+  return callRpc('torrent-remove', { ids, 'delete-local-data': deleteData });
+}
+
+// Bulk/single action + auto-refresh
+export async function performActionAndRefresh(ids: number[], action: 'start' | 'stop' | 'remove') {
+  try {
+    switch (action) {
+      case 'start': await startTorrents(ids); break;
+      case 'stop': await stopTorrents(ids); break;
+      case 'remove': await removeTorrents(ids); break;
+    }
+    await refreshAll();
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Action failed';
+    console.error('Action failed:', err);
+    error.set(message);
+  }
+}
+
+// Phase 2: Refresh single torrent details (files/priorities)
+export async function refreshTorrent(id: number) {
+  isLoading.set(true);
+  try {
+    const res = await callRpc<{ torrents: Torrent[] }>('torrent-get', {
+      ids: [id],
+      fields: [...torrentFields, 'files', 'fileStats'] as const
+    });
+    if (res.torrents?.[0]) {
+      currentTorrent.set(res.torrents[0]);
+    }
+  } catch (err: unknown) {
+    error.set(err instanceof Error ? err.message : 'Torrent details failed');
+  } finally {
+    isLoading.set(false);
+  }
+}
+
+// Phase 2: Set file priorities
+export async function setFilePriorities(id: number, fileIds: number[], priority: number) {
+  return callRpc('torrent-set', {
+    ids: [id],
+    'priority-high': priority === 1 ? fileIds : [],
+    'priority-low': priority === -1 ? fileIds : [],
+    'priority-normal': priority === 0 ? fileIds : [],
+    'files-wanted': priority >= 0 ? fileIds : [],  // Skip = -2, no want
+    'files-unwanted': priority === -2 ? fileIds : []
+  });
+}
+
+export async function updateFilePriorities(torrentId: number, priorities: Record<number, number>) {
+  const args: Record<string, number[]> = { ids: [torrentId] };
+  const high: number[] = [];
+  const low: number[] = [];
+  const normal: number[] = [];
+  const unwanted: number[] = [];
+
+  for (const [idxStr, prio] of Object.entries(priorities)) {
+    const idx = Number(idxStr);
+    switch (prio) {
+      case 1: high.push(idx); break;
+      case -1: low.push(idx); break;
+      case 0: normal.push(idx); break;
+      case -2: unwanted.push(idx); break;
+    }
+  }
+
+  args['priority-high'] = high;
+  args['priority-low'] = low;
+  args['priority-normal'] = normal;
+  args['files-wanted'] = [...high, ...low, ...normal];
+  args['files-unwanted'] = unwanted;
+
+  return callRpc('torrent-set', args);
 }
