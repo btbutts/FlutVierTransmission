@@ -1,4 +1,5 @@
 import tailwindcss from '@tailwindcss/vite';
+import Icons from 'unplugin-icons/vite';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig, loadEnv } from 'vite';
 
@@ -18,6 +19,10 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [
       tailwindcss(),
+      Icons({
+        compiler: 'svelte',
+        autoInstall: true,
+      }),
       sveltekit()
     ],
     css: {

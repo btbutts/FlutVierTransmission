@@ -12,3 +12,10 @@ body {
         background-color: rgba(31, 41, 55, 0.8); /* gray-800/80 */
     }
 }
+
+html, body {
+    height: 100vh;
+    overflow: hidden;
+    margin: 0;
+    padding: 0;
+}

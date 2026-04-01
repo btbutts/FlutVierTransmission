@@ -3,6 +3,11 @@
   import { refreshAll, torrents, session, isLoading, error, addTorrent, performActionAndRefresh, selectedTorrents } from '$lib';
   import type { Torrent } from '$lib';
 
+  // Sidebar stats (computed from torrents; session lacks totals)
+  const totalDownloaded = $derived(Math.round($torrents.reduce((sum: number, t: Torrent) => sum + (t.downloadedEver || 0), 0) / (1024 ** 3)));
+  const totalUploaded = $derived(Math.round($torrents.reduce((sum: number, t: Torrent) => sum + (t.uploadedEver || 0), 0) / (1024 ** 3)));
+  const activeCount = $derived($torrents.filter((t: Torrent) => [4, 5, 6].includes(t.status)).length);
+
   let addModalOpen = $state(false);
   let newTorrentUrl = $state('');
   let { children } = $props();
@@ -21,20 +26,22 @@
   }
 
   $effect(() => {
-    // Auto-refresh every 20s (throttled to fix setTimeout warnings; Flood-like)
+    // Auto-refresh every 20s
+    // (throttled to fix setTimeout warnings)
+    refreshAll();
     const interval = setInterval(refreshAll, 20000);
     return () => clearInterval(interval);
   });
 </script>
 
-<div class="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 flex">
+<div class="h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 flex overflow-hidden">
   <!-- Sidebar (stats, future filters) -->
   <aside class="w-64 bg-white/80 dark:bg-gray-800/80 backdrop-blur border-r border-gray-200/50 dark:border-gray-700/50 p-6 hidden lg:block">
     <h2 class="font-bold mb-6 text-lg">Stats</h2>
     <div class="space-y-4 text-sm">
-      <div>Downloaded: {Math.round((($session.downloadedEver as number) || 0) / (1024**3))} GB</div>
-      <div>Uploaded: {Math.round((($session.uploadedEver as number) || 0) / (1024**3))} GB</div>
-      <div>Active: {$torrents.filter((t: Torrent) => [4,5,6].includes(t.status)).length}</div>
+      <div>Downloaded: {totalDownloaded} GB</div>
+      <div>Uploaded: {totalUploaded} GB</div>
+      <div>Active: {activeCount}</div>
       <div>All: {$torrents.length}</div>
       <div>Selected: {$selectedTorrents.length}</div>
     </div>
@@ -43,7 +50,7 @@
   <!-- Main + Toolbar -->
   <div class="flex-1 flex flex-col min-h-screen">
     <!-- Toolbar (Flood-style) -->
-    <header class="bg-white/80 dark:bg-gray-800/80 backdrop-blur shadow-sm p-4 border-b border-gray-200/50 dark:border-gray-700/50 flex items-center justify-between sticky top-0 z-10">
+    <header class="bg-white/80 dark:bg-gray-800/80 backdrop-blur shadow-sm p-4 border-b border-gray-200/50 dark:border-gray-700/50 flex items-center justify-between sticky top-0 z-30">
       <div class="flex items-center space-x-4">
         <h1 class="text-2xl font-bold">FlutVierTransmission</h1>
         {#if $error}
@@ -76,7 +83,7 @@
     </header>
 
     <!-- Page Content (Svelte 5: children snippet) -->
-    <main class="flex-1 overflow-auto p-6">
+    <main class="flex-1 overflow-hidden px-6 py-4">
       {@render children()}
     </main>
   </div>
