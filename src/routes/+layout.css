@@ -9,13 +9,47 @@ body {
 
 @media (prefers-color-scheme: dark) {
     body {
-        background-color: rgba(31, 41, 55, 0.8); /* gray-800/80 */
+        background-color: #111827; /* gray-900 — matches main content area */
     }
 }
 
-html, body {
+html {
     height: 100vh;
-    overflow: hidden;
+    overflow: hidden;   /* scroll is handled by the content row container, not the page */
     margin: 0;
     padding: 0;
+}
+
+body {
+    height: 100%;
+    overflow: visible;
+    margin: 0;
+    padding: 0;
+}
+
+*::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+    background: rgba(28, 31, 43, 0.514); /* Subtle purple-gray like macOS */
+    border-radius: 9999px; /* Fully rounded ends */
+    min-height: 32px; /* Minimum thumb height for usability */
+    transition: background 0.2s;
+}
+
+*::-webkit-scrollbar-thumb:hover,
+*::-webkit-scrollbar-thumb:active {
+    background: rgba(28, 31, 43, 0.514); /* Slightly darker on hover/active */
+}
+
+/* Firefox scrollbar (fallback, thin/trackless) */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(26, 46, 125, 0.677) transparent;
 }

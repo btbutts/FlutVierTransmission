@@ -13,7 +13,8 @@ export {
     stopTorrents,
     removeTorrents,
     performActionAndRefresh,
-    updateFilePriorities
+    updateFilePriorities,
+    layoutMinWidth
 } from './stores';
 export {
     currentTorrent,

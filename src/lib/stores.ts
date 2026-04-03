@@ -5,6 +5,9 @@ import { writable } from 'svelte/store';
 import { callRpc, ensureSessionId } from './rpc';
 import type { Torrent } from './types';
 
+// Shared layout min-width: set by page.svelte (sidebar + table), read by layout.svelte
+export const layoutMinWidth = writable('100%');
+
 // Add after existing stores
 export const selectedTorrents = writable<number[]>([]);
 export const currentTorrent = writable<Torrent | null>(null);
