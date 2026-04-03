@@ -59,7 +59,7 @@
     <div class="flex items-center space-x-2">
       <button
         onclick={() => (addModalOpen = true)}
-        class="px-4 py-2 bg-blue-700 hover:bg-blue-600 text-white rounded-md shadow-sm flex items-center space-x-2 text-sm font-medium"
+        class="px-4 py-2 bg-blue-700 hover:bg-blue-600 text-white rounded-md shadow-sm flex items-center space-x-2 text-sm text-nowrap font-medium"
         disabled={$isLoading}
       >
         <span>+ Add Torrent</span>

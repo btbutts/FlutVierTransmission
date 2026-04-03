@@ -17,6 +17,7 @@
     Delete,
   } from '$lib/plugins';
   import { onMount } from 'svelte';
+  import DDSelector from '$lib/components/DDSelector.svelte';
 
   // Declar vars
   //let sortKey = $state<'name' | 'status' | 'totalSize' | 'rateDownload' | 'eta'>('name');
@@ -231,6 +232,15 @@
   function openFiles(t: Torrent) {
     currentTorrent.set(t);
     refreshTorrent(t.id);  // Fetch details
+  }
+
+  // torrentFilesPopUp action: moves the node to document.body so it escapes <main>'s stacking context.
+  // This ensures the modal's z-50 is compared in the root stacking context, beating sidebar (z-20) and header (z-30).
+  function torrentFilesPopUp(node: HTMLElement) {
+    document.body.appendChild(node);
+    return {
+      destroy() { node.remove(); }
+    };
   }
 
   async function savePriorities() {
@@ -471,8 +481,9 @@
 
 <!-- Phase 2: Per-Torrent Files Modal -->
 {#if $currentTorrent}
-  <div 
-    class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" 
+  <div
+    use:torrentFilesPopUp
+    class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
     role="presentation"
     onclick={(event) => {
       if (event.target === event.currentTarget) {
@@ -487,23 +498,23 @@
       }
     }}
   >
-    <div class="bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl rounded-3xl shadow-2xl ring-1 ring-white/50 dark:ring-gray-900/50 ring-offset-1 ring-offset-gray-50/50 dark:ring-offset-gray-900/50 max-w-5xl w-full max-h-[90vh] flex flex-col overflow-hidden mx-4">
+    <div class="bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl rounded-3xl ring-1 ring-white/50 dark:ring-gray-900/50 ring-offset-1 ring-offset-gray-50/50 dark:ring-offset-gray-900/50 max-w-5xl w-full max-h-[90vh] flex flex-col overflow-hidden mx-4" style="box-shadow: 0 0 0 1px rgba(0,0,0,0.15), 0 0 40px 16px rgba(0,0,0,0.65), 0 0 120px 60px rgba(0,0,0,0.5)">
       <!-- Sticky Title + Buttons -->
       <div class="sticky top-0 z-20 bg-white/95 dark:bg-gray-800/95 backdrop-blur-md border-b border-gray-200/50 dark:border-gray-700/50 p-8 flex justify-between items-center flex-shrink-0 rounded-t-3xl">
-        <h2 class="text-3xl font-bold flex-1 min-w-0 pr-4 break-words max-w-none" id="modal-title">Files: {$currentTorrent.name}</h2>
+        <h2 class="text-3xl font-bold flex-1 min-w-0 pr-4 break-words max-w-none dark:text-gray-300" id="modal-title">Files: {$currentTorrent.name}</h2>
         <div class="flex space-x-2 flex-nowrap flex-shrink-0 min-w-[12rem]">
-          <button onclick={() => refreshTorrent($currentTorrent!.id)} 
+          <button onclick={() => refreshTorrent($currentTorrent!.id)}
                   class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg text-sm flex-shrink-0 transition-colors">Refresh</button>
-          <button onclick={() => ($currentTorrent = null, filePriorities = {})} 
+          <button onclick={() => ($currentTorrent = null, filePriorities = {})}
                   class="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg text-sm flex-shrink-0 transition-colors">Close</button>
-          <button onclick={savePriorities} 
-                  disabled={Object.keys(filePriorities).length === 0} 
+          <button onclick={savePriorities}
+                  disabled={Object.keys(filePriorities).length === 0}
                   class="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium flex-shrink-0 transition-colors">Save Priorities</button>
         </div>
       </div>
       <!-- Scrollable Table Container -->
       <div class="flex-1 min-h-0 overflow-y-auto px-8 pt-0 pb-8 rounded-b-3xl">
-        <table class="w-full text-sm">
+        <table class="w-full text-sm dark:text-white">
           <thead class="sticky top-0 z-10 bg-gray-50/95 dark:bg-gray-700/95 backdrop-blur-sm border-b border-gray-200/50 dark:border-gray-700/50 -mx-8 px-8">
             <tr>
               <th class="p-3 text-left font-medium">Name</th>
@@ -522,7 +533,7 @@
                   <td class="p-3 text-center">
                     <div class="w-28 mx-auto relative bg-gray-200/90 dark:bg-gray-700/90 rounded-2xl h-6 shadow-sm border border-gray-200/50 dark:border-gray-700/50 overflow-hidden">
                       <!-- Progress Fill (absolute, behind text) -->
-                      <div 
+                      <div
                         class="absolute left-0 top-0 h-full bg-gradient-to-r from-green-500 to-green-600 dark:from-green-600 dark:to-green-700 rounded-2xl transition-all duration-500 shadow-inner"
                         style="width: {((stat.bytesCompleted / file.length) * 100).toFixed(1)}%"
                       ></div>
@@ -535,19 +546,15 @@
                     </div>
                   </td>
                   <td class="p-3 text-center">
-                    <select
+                    <DDSelector
                       value={filePriorities[i] ?? stat.priority}
-                      class="p-1.5 border border-gray-300 dark:border-gray-600 rounded-md text-xs bg-white/90 dark:bg-gray-700/90 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all cursor-pointer w-20 mx-auto appearance-none [&>option]:bg-white [&>option]:text-gray-900 dark:[&>option]:bg-gray-800 dark:[&>option]:text-gray-100"
-                      onchange={(e) => {
-                        const target = e.target as HTMLSelectElement;
-                        filePriorities[i] = Number(target.value);
+                      onChange={(newValue) => {
+                        filePriorities = {
+                          ...filePriorities,
+                          [i]: newValue
+                        };
                       }}
-                    >
-                      <option value="-2">Skip</option>
-                      <option value="-1">Low</option>
-                      <option value="0">Normal</option>
-                      <option value="1">High</option>
-                    </select>
+                    />
                   </td>
                 </tr>
               {/if}
