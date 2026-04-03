@@ -2,10 +2,12 @@
   import './+layout.css';
   import { refreshAll, torrents, session, isLoading, error, addTorrent, performActionAndRefresh, selectedTorrents } from '$lib';
   import type { Torrent } from '$lib';
+  import RefreshButton from '$lib/components/RefreshButton.svelte';
   import "@fontsource-variable/inter/index.css"; // Import the Inter variable font (supports weights 100-900)
   import "@fontsource/inter/400.css"; // Import static weights as additional sources for the "Inter" family
   import "@fontsource/inter/500.css";
   import "@fontsource/inter/600.css";
+  import { Plus } from '$lib/plugins';
 
   // Sidebar stats (computed from torrents; session lacks totals)
   const totalDownloaded = $derived(Math.round($torrents.reduce((sum: number, t: Torrent) => sum + (t.downloadedEver || 0), 0) / (1024 ** 3)));
@@ -59,10 +61,11 @@
     <div class="flex items-center space-x-2">
       <button
         onclick={() => (addModalOpen = true)}
-        class="px-4 py-2 bg-blue-700 hover:bg-blue-600 text-white rounded-md shadow-sm flex items-center space-x-2 text-sm text-nowrap font-medium"
+        class="px-4 py-2 bg-blue-700 hover:bg-blue-600 text-white rounded-md shadow-sm flex items-center space-x-2 text-sm text-nowrap"
         disabled={$isLoading}
       >
-        <span>+ Add Torrent</span>
+        <Plus class="h-4 w-4" />
+        <span>Add Torrent</span>
       </button>
       {#if $selectedTorrents.length > 0}
         <button onclick={() => performActionAndRefresh($selectedTorrents, 'start')} class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md shadow-sm text-sm">
@@ -71,13 +74,11 @@
         <button onclick={() => performActionAndRefresh($selectedTorrents, 'stop')} class="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-md shadow-sm text-sm">Stop</button>
         <button onclick={() => performActionAndRefresh($selectedTorrents, 'remove')} class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md shadow-sm text-sm">Remove</button>
       {/if}
-      <button
-        onclick={refreshAll}
-        disabled={$isLoading}
-        class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md shadow-sm flex items-center space-x-2 text-sm"
-      >
-        <span>{$isLoading ? 'Loading...' : 'Refresh'}</span>
-      </button>
+      <RefreshButton
+        loading={$isLoading}
+        onClick={refreshAll}
+        buttonClass="px-4 py-2 bg-gray-700 hover:bg-gray-600 active:bg-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 dark:active:bg-gray-800 text-white rounded-md shadow-sm transition-colors text-sm text-nowrap"
+      />
     </div>
   </header>
 
@@ -101,9 +102,17 @@
 
   <!-- Add Torrent Modal (Flood-like) -->
   {#if addModalOpen}
-    <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-        <h2 class="text-2xl font-bold mb-6">Add Torrent</h2>
+    <div
+      class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+      role="presentation"
+      onclick={(event) => {
+        if (event.target === event.currentTarget) {
+          addModalOpen = false;
+        }
+      }}
+    >
+      <div class="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-2xl ring-1 ring-black/20 dark:ring-white/10 max-w-md w-full max-h-[90vh] overflow-y-auto" style="box-shadow: 0 0 0 1px rgba(0,0,0,0.15), 0 0 40px 16px rgba(0,0,0,0.65), 0 0 120px 60px rgba(0,0,0,0.5)">
+        <h2 class="text-2xl font-bold mb-6 text-white">Add Torrent</h2>
         <div class="space-y-4">
           <input
             bind:value={newTorrentUrl}
@@ -114,9 +123,10 @@
             <button
               onclick={handleAdd}
               disabled={!newTorrentUrl.trim()}
-              class="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium py-3 px-4 rounded-xl shadow-sm transition-all"
+              class="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium py-3 px-4 rounded-xl shadow-sm transition-all inline-flex items-center justify-center gap-2"
             >
-              Add Torrent
+              <Plus class="h-[1em] w-[1em] shrink-0" />
+              <span>Add Torrent</span>
             </button>
             <button
               onclick={() => (addModalOpen = false)}

@@ -18,6 +18,7 @@
   } from '$lib/plugins';
   import { onMount } from 'svelte';
   import DDSelector from '$lib/components/DDSelector.svelte';
+  import RefreshButton from '$lib/components/RefreshButton.svelte';
 
   // Declar vars
   //let sortKey = $state<'name' | 'status' | 'totalSize' | 'rateDownload' | 'eta'>('name');
@@ -503,8 +504,11 @@
       <div class="sticky top-0 z-20 bg-white/95 dark:bg-gray-800/95 backdrop-blur-md border-b border-gray-200/50 dark:border-gray-700/50 p-8 flex justify-between items-center flex-shrink-0 rounded-t-3xl">
         <h2 class="text-3xl font-bold flex-1 min-w-0 pr-4 break-words max-w-none dark:text-gray-300" id="modal-title">Files: {$currentTorrent.name}</h2>
         <div class="flex space-x-2 flex-nowrap flex-shrink-0 min-w-[12rem]">
-          <button onclick={() => refreshTorrent($currentTorrent!.id)}
-                  class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg text-sm flex-shrink-0 transition-colors">Refresh</button>
+          <RefreshButton
+            loading={$isLoading}
+            onClick={() => refreshTorrent($currentTorrent!.id)}
+            buttonClass="px-4 py-2 bg-gray-600 hover:bg-gray-700 active:bg-gray-800 dark:bg-gray-600 dark:hover:bg-gray-700 dark:active:bg-gray-800 text-white rounded-lg shadow-sm transition-colors text-sm flex-shrink-0"
+          />
           <button onclick={() => ($currentTorrent = null, filePriorities = {})}
                   class="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg text-sm flex-shrink-0 transition-colors">Close</button>
           <button onclick={savePriorities}
