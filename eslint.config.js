@@ -44,9 +44,6 @@ export default defineConfig(
 			// Additional helpful Svelte 5 rules
 			'svelte/no-reactive-reassign': 'error',
 			'svelte/valid-compile': 'error',
-			'svelte/no-unused-state': 'warn',
-			'svelte/no-unused-props': 'warn',
-			'svelte/no-unused-events': 'warn',
 
 			// Optional: discourage unused vars in a more Svelte-friendly way
 			'no-unused-vars': 'off', // already handled by typescript-eslint
@@ -94,7 +91,6 @@ export default defineConfig(
 		rules: {
 			// SvelteKit-specific best practices
 			'svelte/no-export-load-in-svelte-module-in-kit-pages': 'error',
-			'svelte/no-export-load-in-svelte-module-in-kit-layouts': 'error',
 			'svelte/valid-prop-names-in-kit-pages': 'error',
 		},
 	},
