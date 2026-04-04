@@ -28,6 +28,14 @@ export interface Torrent {
   downloadDir: string;
   error: number;
   errorString?: string;
+  isPrivate?: boolean;
+  addedDate?: number;
+  doneDate?: number;
+  queuePosition?: number;
+  seedRatio?: number;
+  peersSendingToUs?: number;    // Leechers (we're seeding to)
+  peersGettingFromUs?: number;  // Active seeders (downloading from)
+  trackers?: Array<{ announce: string }>;
   // files and fileStats are more complex;
   // we'll handle them later when we add per-torrent file view
   files?: File[];

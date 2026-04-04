@@ -32,20 +32,35 @@
   let dragStartX = $state(0);
   let dragStartWidth = $state('');
   let dragStartRightWidth = $state('');
-  let columns = $state<ColumnConfig[]>([
-    { key: 'name', label: 'Name', width: '256px', minWidth: '120px', align: 'left', sortable: true, resizable: true },
-    { key: 'status', label: 'Status', width: '112px', minWidth: '80px', align: 'center', sortable: true, resizable: true },
-    { key: 'totalSize', label: 'Size', width: '96px', minWidth: '72px', align: 'center', headerAlign: 'center', sortable: true, resizable: true },
-    { key: 'rateDownload', label: 'Down', width: '96px', minWidth: '72px', align: 'center', headerAlign: 'center', sortable: true, resizable: true },
-    { key: 'eta', label: 'ETA', width: '80px', minWidth: '64px', align: 'center', headerAlign: 'center', sortable: true, resizable: true }  // No resizer before Actions
+  const columns = $state<ColumnConfig[]>([
+    { key: 'name', label: 'Name', width: '256px', minWidth: '120px', align: 'left', sortable: true, resizable: true, isVisible: true },
+    { key: 'status', label: 'Status', width: '112px', minWidth: '80px', align: 'center', sortable: true, resizable: true, isVisible: true },
+    { key: 'totalSize', label: 'Size', width: '96px', minWidth: '72px', align: 'center', headerAlign: 'center', sortable: true, resizable: true, isVisible: true },
+    { key: 'rateDownload', label: 'DL', width: '96px', minWidth: '72px', align: 'center', headerAlign: 'center', sortable: true, resizable: true, isVisible: true },
+    { key: 'eta', label: 'ETA', width: '80px', minWidth: '64px', align: 'center', headerAlign: 'center', sortable: true, resizable: true, isVisible: true },  // No resizer before Actions
+    // Begin optional columns (isVisible: false by default)
+    { key: 'private', label: 'Private', width: '72px', minWidth: '60px', align: 'center', headerAlign: 'center', sortable: true, resizable: true, isVisible: false },
+    { key: 'ul', label: 'UL', width: '96px', minWidth: '72px', align: 'center', headerAlign: 'center', sortable: true, resizable: true, isVisible: false },
+    { key: 'activeSeeders', label: 'Seeds', width: '80px', minWidth: '64px', align: 'center', headerAlign: 'center', sortable: true, resizable: true, isVisible: false },
+    { key: 'added', label: 'Added', width: '112px', minWidth: '80px', align: 'center', headerAlign: 'center', sortable: true, resizable: true, isVisible: false },
+    { key: 'basePath', label: 'Path', width: '160px', minWidth: '120px', align: 'left', headerAlign: 'center', sortable: true, resizable: true, isVisible: false },
+    { key: 'done', label: 'Done', width: '112px', minWidth: '80px', align: 'center', headerAlign: 'center', sortable: true, resizable: true, isVisible: false },
+    { key: 'error', label: 'Error', width: '120px', minWidth: '96px', align: 'left', headerAlign: 'center', sortable: true, resizable: true, isVisible: false },
+    { key: 'queuePos', label: 'Queue', width: '72px', minWidth: '60px', align: 'center', headerAlign: 'center', sortable: true, resizable: true, isVisible: false },
+    { key: 'seedRatio', label: 'Ratio', width: '80px', minWidth: '64px', align: 'center', headerAlign: 'center', sortable: true, resizable: true, isVisible: false },
+    { key: 'leechers', label: 'Leechers', width: '80px', minWidth: '64px', align: 'center', headerAlign: 'center', sortable: true, resizable: true, isVisible: false },
+    { key: 'trackers', label: 'Trackers', width: '200px', minWidth: '140px', align: 'center', headerAlign: 'center', sortable: true, resizable: true, isVisible: false }
   ]);
+
+  // Only visible columns for rendering/width calcs (object refs preserved for mutation)
+  const visibleColumns = $derived(columns.filter(col => col.isVisible));
 
   // Min table width: ensures horizontal scroll triggers when columns exceed container
   const minTableWidth = $derived(
-    `${48 + 128 + columns.reduce((sum, col) => sum + parseFloat(col.width.slice(0, -2)), 0)}px`
+    `${48 + 128 + visibleColumns.reduce((sum, col) => sum + parseFloat(col.width.slice(0, -2)), 0)}px`
   );
 
-  // On mount: distribute available viewport space proportionally across columns
+  // On mount: distribute available viewport space proportionally across visible columns
   // so the table fills the browser exactly at load time (no horizontal scroll needed by default).
   onMount(() => {
     // Sidebar is now in normal flow (flex sibling of main), so its width is subtracted directly.
@@ -56,15 +71,15 @@
     const checkboxW = 48;
     const actionsW = 128;
     const available = window.innerWidth - sidebarW - hPad - scrollbarGutter - checkboxW - actionsW;
-    const defaultW = columns.map(col => parseFloat(col.width.slice(0, -2)));
+    const visibleCols = columns.filter(col => col.isVisible);
+    const defaultW = visibleCols.map(col => parseFloat(col.width.slice(0, -2)));
     const totalDefault = defaultW.reduce((a, b) => a + b, 0);
-    columns = columns.map((col, i) => ({
-      ...col,
-      width: `${Math.max(
+    visibleCols.forEach((col, i) => { // Mutate only visible cols
+      col.width = `${Math.max(
         parseFloat(col.minWidth?.slice(0, -2) ?? '60'),
         Math.floor(available * defaultW[i] / totalDefault)
-      )}px`
-    }));
+      )}px`;
+    });
   });
 
   // Keep layoutMinWidth store in sync so layout.svelte's inner wrapper knows the total
@@ -85,6 +100,7 @@
     headerAlign?: 'left' | 'right' | 'center';
     sortable: boolean;
     resizable: boolean;
+    isVisible: boolean;
   }
 
   $effect(() => {
@@ -92,16 +108,18 @@
     if (colIdx !== null) {
       const handleMouseMove = (e: MouseEvent) => {
         const delta = e.clientX - dragStartX;
+        const col = visibleColumns[colIdx];  // Use visible ref so indexes match rendered order
         const startW = parseFloat(dragStartWidth.slice(0, -2));
-        const minW = parseFloat(columns[colIdx].minWidth?.slice(0, -2) ?? '60');
+        const minW = parseFloat(col.minWidth?.slice(0, -2) ?? '60');
         const newWidth = Math.max(minW, startW + delta);
         const actualDelta = newWidth - startW;
-        columns[colIdx].width = `${newWidth}px`;
+        col.width = `${newWidth}px`; // Mutates original via ref
         const nextIdx = colIdx + 1;
-        if (nextIdx < columns.length && dragStartRightWidth) {
+        if (nextIdx < visibleColumns.length && dragStartRightWidth) { // NEW: visible length
+          const nextCol = visibleColumns[nextIdx];
           const rightStartW = parseFloat(dragStartRightWidth.slice(0, -2));
-          const rightMin = parseFloat(columns[nextIdx].minWidth?.slice(0, -2) ?? '60');
-          columns[nextIdx].width = `${Math.max(rightMin, rightStartW - actualDelta)}px`;
+          const rightMin = parseFloat(nextCol.minWidth?.slice(0, -2) ?? '60');
+          nextCol.width = `${Math.max(rightMin, rightStartW - actualDelta)}px`;
         }
       };
       const handleMouseUp = () => {
@@ -196,6 +214,17 @@
       case 'totalSize': return formatBytes(t.totalSize);
       case 'rateDownload': return formatSpeed(t.rateDownload);
       case 'eta': return t.eta < 0 ? '—' : `${Math.round(t.eta / 60)}m`;
+      case 'private': return t.isPrivate ? '✓' : '✗';
+      case 'ul': return formatSpeed(t.rateUpload ?? 0);
+      case 'activeSeeders': return t.peersSendingToUs?.toString() ?? '—';
+      case 'added': return t.addedDate ? new Date(t.addedDate * 1000).toLocaleDateString() : '—';
+      case 'basePath': return t.downloadDir ?? '—';
+      case 'done': return t.doneDate ? new Date(t.doneDate * 1000).toLocaleDateString() : '—';
+      case 'error': return t.errorString ?? '—';
+      case 'queuePos': return t.queuePosition?.toString() ?? '—';
+      case 'seedRatio': return t.seedRatio ? t.seedRatio.toFixed(2) : '—';
+      case 'leechers': return t.peersGettingFromUs?.toString() ?? '—';
+      case 'trackers': return (t.trackers ?? []).map(tr => tr.announce.split('/')[2]).filter(Boolean).join(', ') || '—';
       default: return '';
     }
   }
@@ -208,6 +237,17 @@
       case 'totalSize': return t.totalSize;
       case 'rateDownload': return t.rateDownload;
       case 'eta': return t.eta >= 0 ? t.eta : Infinity;  // Sort unknowns last
+      case 'private': return t.isPrivate ? 1 : 0;
+      case 'ul': return t.rateUpload ?? 0;
+      case 'activeSeeders': return t.peersSendingToUs ?? 0;
+      case 'added': return t.addedDate ?? 0;
+      case 'basePath': return t.downloadDir ?? '';
+      case 'done': return t.doneDate ?? 0;
+      case 'error': return (t.errorString ?? '').toLowerCase();
+      case 'queuePos': return t.queuePosition ?? Infinity;
+      case 'seedRatio': return t.seedRatio ?? 0;
+      case 'leechers': return t.peersGettingFromUs ?? 0;
+      case 'trackers': return (t.trackers ?? []).length;
       default: return t.name.toLowerCase();
     }
   }
@@ -328,7 +368,7 @@
                 />
               </th>
               <!-- Dynamic Resizable THs: Name pl-0 (abut checkbox), truncate all -->
-              {#each columns as col, colIdx (col.key)}
+              {#each visibleColumns as col, colIdx (col.key)}
                 <th
                   class="{col.key === 'name' ? 'pt-2 pb-2 pl-2 pr-2' : 'p-2'} font-medium text-xs relative overflow-hidden { {right:'text-right',center:'text-center',left:'text-left'}[col.headerAlign ?? col.align] }"
                   style={col.key === 'name' ? `width: ${col.width}; min-width: ${col.minWidth ?? '120px'}` : `width: ${col.width}; min-width: ${col.minWidth ?? '60px'}`}
@@ -375,9 +415,8 @@
                         e.stopPropagation();
                         resizingColIndex = colIdx;
                         dragStartX = e.clientX;
-                        const th = (e.currentTarget as HTMLElement).closest('th') as HTMLElement | null;
-                        dragStartWidth = th ? `${th.offsetWidth}px` : col.width;
-                        dragStartRightWidth = colIdx + 1 < columns.length ? columns[colIdx + 1].width : '';
+                        dragStartWidth = col.width;
+                        dragStartRightWidth = colIdx + 1 < visibleColumns.length ? visibleColumns[colIdx + 1].width : '';
                       }}
                       onclick={(e) => e.stopPropagation()}
                       onkeydown={(e: KeyboardEvent) => {
@@ -433,7 +472,7 @@
                   />
                 </td>
                 <!-- Dynamic TDs: Name pl-0 (abut checkbox), truncate/overflow all -->
-                {#each columns as col (col.key)}
+                {#each visibleColumns as col (col.key)}
                   <!-- The following line is being replaced by the one after it
                   <td class="p-2 text-xs overflow-hidden {col.align === 'right' ? 'text-right' : 'text-left'} {col.key === 'name' ? 'font-medium' : ''}" style="width: {col.width}; min-width: {col.minWidth ?? '60px'};"> -->
                   <td class="{col.key === 'name' ? 'pt-2 pb-2 pl-2 pr-2 font-medium' : 'p-2'} text-xs overflow-hidden relative { {right:'text-right',center:'text-center',left:'text-left'}[col.align] }" style={col.key === 'name' ? `width: ${col.width}; min-width: ${col.minWidth ?? '120px'}` : `width: ${col.width}; min-width: ${col.minWidth ?? '60px'}`}>
