@@ -167,7 +167,7 @@
   {#if dropdown.open}
     <div
         use:menuPopUp
-        class="fixed z-[80] bg-white/95 dark:bg-gray-800/95 border border-gray-300 dark:border-gray-600
+        class="fixed z-[80] bg-white/95 dark:bg-gray-800/90 border border-gray-300/70 dark:border-gray-700/60
           rounded-md shadow-2xl py-1 text-xs overflow-hidden max-h-60 overflow-y-auto backdrop-blur-sm"
         style={menuStyle}
       role="listbox"
@@ -179,12 +179,11 @@
         <button
           onclick={() => dropdown.selectOption(option.value)}
           role="option"
-          aria-selected={dropdown.isSelected(option.value)}
-          class="w-full px-3 py-1.5 text-left flex items-center gap-2 hover:bg-gray-100 dark:hover:bg-gray-700
+          aria-selected={dropdown.isSelected(option.value)}          onmouseenter={() => dropdown.setHighlightedIndex(index)}          class="w-full px-3 py-1.5 text-left flex items-center gap-2 bg-transparent hover:bg-gray-100/40 dark:hover:bg-gray-700/30
                  transition-colors {(dropdown.isSelected(option.value) || (setMDIstatusIcon && option.visible))
-                    ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-medium'
+                    ? 'text-blue-600 dark:text-blue-400 font-medium'
                     : dropdown.isHighlighted(index)
-                      ? 'bg-gray-100 dark:bg-gray-700'
+                      ? 'bg-gray-100/40 dark:bg-gray-700/30 text-gray-900 dark:text-gray-100'
                       : 'text-gray-900 dark:text-gray-100'}"
         >
           {#if setMDIstatusIcon}

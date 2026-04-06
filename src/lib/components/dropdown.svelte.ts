@@ -71,6 +71,10 @@ export function createDropdown<T = number>({
         }
     }
 
+    function setHighlightedIndex(index: number) {
+        highlightedIndex = index;
+    }
+
     function handleKeydown(e: KeyboardEvent) {
         if (!open)
             return;
@@ -140,6 +144,7 @@ export function createDropdown<T = number>({
         selectOption,
         close,
         handleKeydown,
+        setHighlightedIndex,
 
         // Helpers
         options,

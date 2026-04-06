@@ -1,6 +1,7 @@
 <script lang="ts">
   import './+layout.css';
   import { refreshAll, torrents, session, isLoading, error, addTorrent, performActionAndRefresh, selectedTorrents } from '$lib';
+  import { createHorizontalScrollSync } from '$lib/horizontalScrollSync.svelte';
   import type { Torrent } from '$lib';
   import RefreshButton from '$lib/components/RefreshButton.svelte';
   import "@fontsource-variable/inter/index.css"; // Import the Inter variable font (supports weights 100-900)
@@ -17,6 +18,8 @@
   let addModalOpen = $state(false);
   let newTorrentUrl = $state('');
   let { children } = $props();
+
+  const scrollSync = createHorizontalScrollSync();
 
   async function handleAdd() {
     if (newTorrentUrl.trim()) {
@@ -46,6 +49,14 @@
                  "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans",
                  "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
   }
+
+  /* Hide <main>'s native horizontal scrollbar — the custom sync scrollbar div below replaces it. */
+  :global(main.main-scroll) {
+    scrollbar-width: none; /* Firefox */
+  }
+  :global(main.main-scroll::-webkit-scrollbar) {
+    display: none; /* Chrome / Safari / Edge */
+  }
 </style>
 
 <div>
@@ -61,7 +72,7 @@
     <div class="flex items-center space-x-2">
       <button
         onclick={() => (addModalOpen = true)}
-        class="px-4 py-2 bg-blue-700 hover:bg-blue-600 text-white rounded-md shadow-sm flex items-center space-x-2 text-sm text-nowrap"
+        class="px-4 py-2 bg-blue-600 hover:bg-blue-800 text-white rounded-md shadow-sm flex items-center space-x-2 text-sm text-nowrap"
         disabled={$isLoading}
       >
         <Plus class="h-4 w-4" />
@@ -94,11 +105,27 @@
     </div>
   </aside>
 
-  <!-- Main: fixed below toolbar, right of sidebar at lg+. Horizontal scroll lives here;
-       table min-width overflows this container and triggers the scrollbar. -->
-  <main class="fixed top-16 left-0 right-0 bottom-0 px-6 lg:pl-[280px] py-4 flex flex-col bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100" style="overflow-x: auto; overflow-y: hidden">
+  <!-- Main: native scrollbar hidden; scroll is mirrored to the custom scrollbar div below. -->
+  <main
+    bind:this={scrollSync.mainEl}
+    class="main-scroll fixed top-16 left-0 right-0 bottom-0 px-6 lg:pl-[280px] py-4 flex flex-col bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+    style="overflow-x: auto; overflow-y: hidden"
+  >
     {@render children()}
   </main>
+
+  <!-- Custom horizontal scrollbar: starts at the sidebar's right edge (lg:left-64).
+       Native scrollbar on <main> is hidden; this div's own native scrollbar is the visible one.
+       Scroll position is kept in sync with <main> via the $effect above.
+       Spacer width is derived from layoutMinWidth so the scroll range matches <main> exactly. -->
+  <div
+    bind:this={scrollSync.syncScrollEl}
+    class="fixed bottom-[1.5px] left-0 lg:left-64 right-0"
+    style="height: 16px; overflow-x: auto; z-index: 22;"
+    aria-hidden="true"
+  >
+    <div style="width: {scrollSync.syncScrollerWidth}; height: 1px;"></div>
+  </div>
 
   <!-- Add Torrent Modal (Flood-like) -->
   {#if addModalOpen}
