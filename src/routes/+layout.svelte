@@ -1,7 +1,8 @@
 <script lang="ts">
   import './+layout.css';
-  import { refreshAll, torrents, session, isLoading, error, addTorrent, performActionAndRefresh, selectedTorrents } from '$lib';
+  import { refreshAll, torrents, isLoading, error, addTorrent, performActionAndRefresh, selectedTorrents } from '$lib';
   import type { Torrent } from '$lib';
+  import HorizontalScrollbar from '$lib/components/HorizontalScrollbar.svelte';
   import RefreshButton from '$lib/components/RefreshButton.svelte';
   import "@fontsource-variable/inter/index.css"; // Import the Inter variable font (supports weights 100-900)
   import "@fontsource/inter/400.css"; // Import static weights as additional sources for the "Inter" family
@@ -16,6 +17,7 @@
 
   let addModalOpen = $state(false);
   let newTorrentUrl = $state('');
+  let mainScrollRef = $state<HTMLElement | null>(null);
   let { children } = $props();
 
   async function handleAdd() {
@@ -96,9 +98,11 @@
 
   <!-- Main: fixed below toolbar, right of sidebar at lg+. Horizontal scroll lives here;
        table min-width overflows this container and triggers the scrollbar. -->
-  <main class="fixed top-16 left-0 right-0 bottom-0 px-6 lg:pl-[280px] py-4 flex flex-col bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100" style="overflow-x: auto; overflow-y: hidden">
+  <main bind:this={mainScrollRef} class="main-scroll-container fixed top-16 left-0 right-0 bottom-0 px-6 lg:pl-[280px] py-4 flex flex-col bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100" style="overflow-x: auto; overflow-y: hidden">
     {@render children()}
   </main>
+
+  <HorizontalScrollbar scrollElement={mainScrollRef} />
 
   <!-- Add Torrent Modal (Flood-like) -->
   {#if addModalOpen}

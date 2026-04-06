@@ -1,6 +1,14 @@
 /* src/routes/+layout.css - Tailwind v4 entrypoint (NEW FILE) */
 @import "tailwindcss";
 
+:root {
+    --app-scrollbar-thumb: rgba(26, 46, 125, 0.82);
+    --app-scrollbar-size: 8px;
+    --app-scrollbar-hover-size: 10px;
+    --app-custom-scrollbar-size: 4px;
+    --app-custom-scrollbar-hover-size: 8px;
+}
+
 /* Ensure consistent background and blur */
 body {
     background-color: rgba(248, 250, 252, 1); /* gray-50 */
@@ -28,8 +36,8 @@ body {
 }
 
 *::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: var(--app-scrollbar-size);
+    height: var(--app-scrollbar-size);
 }
 
 *::-webkit-scrollbar-track {
@@ -37,7 +45,7 @@ body {
 }
 
 *::-webkit-scrollbar-thumb {
-    background: rgba(28, 31, 43, 0.514); /* Subtle purple-gray like macOS */
+    background: var(--app-scrollbar-thumb); /* Shared scrollbar thumb color */
     border-radius: 9999px; /* Fully rounded ends */
     min-height: 32px; /* Minimum thumb height for usability */
     transition: background 0.2s;
@@ -45,11 +53,47 @@ body {
 
 *::-webkit-scrollbar-thumb:hover,
 *::-webkit-scrollbar-thumb:active {
-    background: rgba(28, 31, 43, 0.514); /* Slightly darker on hover/active */
+    background: var(--app-scrollbar-thumb); /* Slightly darker on hover/active */
 }
 
 /* Firefox scrollbar (fallback, thin/trackless) */
 * {
     scrollbar-width: thin;
-    scrollbar-color: rgba(26, 46, 125, 0.677) transparent;
+    scrollbar-color: var(--app-scrollbar-thumb) transparent;
+}
+
+.custom-horizontal-scrollbar {
+    opacity: 0;
+    transition: opacity 160ms ease;
+}
+
+.custom-horizontal-scrollbar.is-visible {
+    opacity: 1;
+}
+
+.custom-horizontal-scrollbar-track {
+    display: flex;
+    align-items: flex-end;
+    height: var(--app-custom-scrollbar-hover-size);
+}
+
+.custom-horizontal-scrollbar-thumb {
+    height: var(--app-custom-scrollbar-size);
+    background: var(--app-scrollbar-thumb);
+    border-radius: 9999px;
+    transition: height 160ms ease, opacity 160ms ease, transform 80ms linear;
+}
+
+.custom-horizontal-scrollbar.is-hovered .custom-horizontal-scrollbar-thumb,
+.custom-horizontal-scrollbar.is-dragging .custom-horizontal-scrollbar-thumb {
+    height: var(--app-custom-scrollbar-hover-size);
+}
+
+.main-scroll-container {
+    scrollbar-width: none;
+}
+
+.main-scroll-container::-webkit-scrollbar {
+    width: 0;
+    height: 0;
 }
