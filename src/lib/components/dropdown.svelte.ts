@@ -1,30 +1,41 @@
 // src/lib/components/dropdown.svelte.ts
-export interface DropdownOption {
-    value: number;
+export interface DropdownOption<T = number> {
+    value: T;
     label: string;
+    visible?: boolean;  // columns Visibility flag when setMDIstatusIcon provided
 }
 
-export interface UseDropdownProps {
-    initialValue?: number;
-    options: () => DropdownOption[];
-    onChange?: (newValue: number) => void;
+export interface UseDropdownProps<T = number> {
+    initialValue?: T;
+    options: () => DropdownOption<T>[];
+    onChange?: (newValue: T) => void;
+    stickyDummyValue?: () => T | undefined;
+    sticky?: () => boolean;
+    multiSelect?: () => boolean;
 }
 
-export function createDropdown({
-    initialValue = 0,
+export function createDropdown<T = number>({
+    initialValue,
     options,
-    onChange = () => {}
-}: UseDropdownProps) {
-    let value = $state(initialValue);
+    onChange = () => {},
+    stickyDummyValue = () => undefined,
+    sticky = () => false,
+    multiSelect = () => false
+}: UseDropdownProps<T>) {
+    let value = $state<T>(initialValue as T);
     let open = $state(false);
     let buttonRef = $state<HTMLButtonElement | null>(null);
 
     // Track currently highlighted index for keyboard navigation
     let highlightedIndex = $state(0);
 
-    const selectedLabel = $derived(
-        options().find((o) => o.value === value)?.label ?? 'Normal'
-    );
+    const selectedLabel = $derived.by(() => {
+        const dummyVal = stickyDummyValue();
+        if (sticky() && dummyVal !== undefined && value === dummyVal) {
+            return String(dummyVal);
+        }
+        return options().find((o) => o.value === value)?.label ?? 'Normal';
+    });
 
     const currentOptions = $derived(options());
 
@@ -38,13 +49,18 @@ export function createDropdown({
         }
     }
 
-    function selectOption(newValue: number) {
-        if (newValue !== value) {
+    function selectOption(newValue: T) {
+        onChange(newValue);
+        const stickyDummy = stickyDummyValue();
+        if (sticky() && stickyDummy !== undefined && newValue !== stickyDummy) {
+            value = stickyDummy;
+        } else {
             value = newValue;
-            onChange(newValue);
         }
-        open = false;
-        buttonRef?.focus(); // Return focus after selection
+        if (!multiSelect()) {
+            open = false;
+            buttonRef?.focus(); // Return focus after selection
+        }
     }
 
     function close() {
@@ -127,7 +143,7 @@ export function createDropdown({
 
         // Helpers
         options,
-        isSelected: (optionValue: number) => value === optionValue,
+        isSelected: (optionValue: T) => value === optionValue,
         isHighlighted: (index: number) => index === highlightedIndex
     };
 }

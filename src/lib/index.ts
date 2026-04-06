@@ -22,3 +22,4 @@ export {
     setFilePriorities
 } from './stores';
 export type { Torrent } from './types';
+export type { DropdownOption } from './components/dropdown.svelte';

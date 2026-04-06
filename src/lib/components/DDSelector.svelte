@@ -1,39 +1,68 @@
 <!-- src/lib/components/DDSelector.svelte -->
-<script lang="ts">
+<script lang="ts" generics="T = string | number">
   import { tick } from 'svelte';
   import { createDropdown, type DropdownOption } from './dropdown.svelte.ts';
+  import { DDSelectorStatusIcons, type DropdownStatusIconName } from '$lib/plugins';
 
   interface Props {
     /** Current value (two-way bindable) */
-    value?: number;
+    value?: T;
     /** Available options */
-    options?: DropdownOption[];
+    options?: DropdownOption<T>[];
     /** Called when the user selects a new option */
-    onChange?: (newValue: number) => void;
+    onChange?: (newValue: T) => void;
+    /** Optional Tailwind classes for root div (overrides defaults like w-20 mx-auto) */
+    class?: string;
+    /** If true, reset to dummyValue after selecting a non-dummy option (label returns to dummy) */
+    stickyDropdownTitle?: boolean;
+    /** Value of the dummy option to reset to (required if stickyDropdownTitle=true) */
+    dummyValue?: T;
+    /** If true, stay open after selections (close only on outside-click/Esc) */
+    enableMultiSelect?: boolean;
+    /** MDI icon name (e.g., 'CircleSmall') for status indicator (shows if option.visible=true) */
+    setMDIstatusIcon?: DropdownStatusIconName;
+    /** Optional additional classes for the MDI status icon */
+    iconClass?: string;
   }
 
   let {
-    value = $bindable(0),
+    value = $bindable<T>(undefined as T),
     options: propOptions = [
       { value: -2, label: 'Skip' },
       { value: -1, label: 'Low' },
       { value: 0, label: 'Normal' },
       { value: 1, label: 'High' }
-    ],
-    onChange = () => {}
+    ] as DropdownOption<T>[],
+    onChange = () => {},
+    class: classOverride = '',    // Optional root classes (defaults empty → no override)
+    stickyDropdownTitle = false,  // If true, resets to dummyValue after selection
+    dummyValue,                   // Required if stickyDropdownTitle=true; the value to reset to after selection
+    enableMultiSelect = false,    // If true, dropdown stays open after selection (closes only on outside click or Esc)
+    setMDIstatusIcon,             // MDI icon name for status indicator (e.g., 'CircleSmall')
+    iconClass: iconClasses = ''     // Optional additional classes for the MDI status icon
   }: Props = $props();
 
   let rootRef = $state<HTMLDivElement | null>(null);
   let listRef = $state<HTMLDivElement | null>(null);
   let menuStyle = $state('');
 
+  const StatusIconComp = $derived.by(
+    () => (setMDIstatusIcon ? DDSelectorStatusIcons[setMDIstatusIcon] ?? null : null)
+  );
+
   // Create the dropdown logic instance
   const dropdown = createDropdown({
     initialValue: value,
     options: () => propOptions,
+    stickyDummyValue: () => dummyValue,
+    sticky: () => stickyDropdownTitle,
+    multiSelect: () => enableMultiSelect,
     onChange: (newVal) => {
-      value = newVal;        // Sync back to the bindable prop
       onChange(newVal);
+      const finalValue = stickyDropdownTitle && dummyValue !== undefined && newVal !== dummyValue
+        ? dummyValue
+        : newVal;
+      value = finalValue as T;
     }
   });
 
@@ -111,7 +140,7 @@
 </script>
 
 
-<div class="relative w-20 mx-auto" bind:this={rootRef}>
+<div class="relative w-20 mx-auto {classOverride}" bind:this={rootRef}>
   <button
     bind:this={dropdown.buttonRef}
     onclick={dropdown.toggle}
@@ -152,16 +181,26 @@
           role="option"
           aria-selected={dropdown.isSelected(option.value)}
           class="w-full px-3 py-1.5 text-left flex items-center gap-2 hover:bg-gray-100 dark:hover:bg-gray-700
-                 transition-colors {dropdown.isSelected(option.value)
+                 transition-colors {(dropdown.isSelected(option.value) || (setMDIstatusIcon && option.visible))
                     ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-medium'
                     : dropdown.isHighlighted(index)
                       ? 'bg-gray-100 dark:bg-gray-700'
                       : 'text-gray-900 dark:text-gray-100'}"
         >
-          {#if dropdown.isSelected(option.value)}
-            <span class="text-blue-600 dark:text-blue-400">✓</span>
+          {#if setMDIstatusIcon}
+            <!-- NEW: MDI status icon mode (reserves space, shows if option.visible === true) -->
+            <span class="w-4 shrink-0 flex items-center justify-center text-blue-600 dark:text-blue-400">
+              {#if option.visible && StatusIconComp}
+                <StatusIconComp class={iconClasses} />
+              {/if}
+            </span>
           {:else}
-            <span class="w-4"></span>
+            <!-- DEFAULT: ✓ checkmark for single-select -->
+            {#if dropdown.isSelected(option.value)}
+              <span class="w-4 shrink-0 text-center text-blue-600 dark:text-blue-400">✓</span>
+            {:else}
+              <span class="w-4 shrink-0"></span>
+            {/if}
           {/if}
           <span>{option.label}</span>
         </button>

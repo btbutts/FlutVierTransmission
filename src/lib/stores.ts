@@ -21,7 +21,10 @@ export const error = writable<string | null>(null);
 const torrentFields = [
   'id', 'name', 'status', 'percentDone', 'totalSize', 'sizeWhenDone',
   'rateDownload', 'rateUpload', 'eta', 'downloadDir', 'files', 'fileStats',
-  'uploadedEver', 'downloadedEver', 'error', 'errorString'
+  'uploadedEver', 'downloadedEver', 'error', 'errorString',
+  // Additional optional fields
+  'isPrivate', 'addedDate', 'doneDate', 'queuePosition', 'seedRatio',
+  'peersSendingToUs', 'peersGettingFromUs', 'trackers'
 ] as const;
 
 export async function refreshAll() {

@@ -10,7 +10,7 @@
     updateFilePriorities,
     layoutMinWidth,
   } from '$lib';
-  import type { Torrent } from '$lib';
+  import type { Torrent, DropdownOption } from '$lib';
   import {
     Play,
     Pause,
@@ -43,14 +43,41 @@
     { key: 'ul', label: 'UL', width: '96px', minWidth: '72px', align: 'center', headerAlign: 'center', sortable: true, resizable: true, isVisible: false },
     { key: 'activeSeeders', label: 'Seeds', width: '80px', minWidth: '64px', align: 'center', headerAlign: 'center', sortable: true, resizable: true, isVisible: false },
     { key: 'added', label: 'Added', width: '112px', minWidth: '80px', align: 'center', headerAlign: 'center', sortable: true, resizable: true, isVisible: false },
-    { key: 'basePath', label: 'Path', width: '160px', minWidth: '120px', align: 'left', headerAlign: 'center', sortable: true, resizable: true, isVisible: false },
+    { key: 'basePath', label: 'Path', width: '200px', minWidth: '120px', align: 'left', headerAlign: 'center', sortable: true, resizable: true, isVisible: false },
     { key: 'done', label: 'Done', width: '112px', minWidth: '80px', align: 'center', headerAlign: 'center', sortable: true, resizable: true, isVisible: false },
     { key: 'error', label: 'Error', width: '120px', minWidth: '96px', align: 'left', headerAlign: 'center', sortable: true, resizable: true, isVisible: false },
     { key: 'queuePos', label: 'Queue', width: '72px', minWidth: '60px', align: 'center', headerAlign: 'center', sortable: true, resizable: true, isVisible: false },
     { key: 'seedRatio', label: 'Ratio', width: '80px', minWidth: '64px', align: 'center', headerAlign: 'center', sortable: true, resizable: true, isVisible: false },
-    { key: 'leechers', label: 'Leechers', width: '80px', minWidth: '64px', align: 'center', headerAlign: 'center', sortable: true, resizable: true, isVisible: false },
+    { key: 'leechers', label: 'Leechers', width: '94px', minWidth: '72px', align: 'center', headerAlign: 'center', sortable: true, resizable: true, isVisible: false },
     { key: 'trackers', label: 'Trackers', width: '200px', minWidth: '140px', align: 'center', headerAlign: 'center', sortable: true, resizable: true, isVisible: false }
   ]);
+
+  // Column toggle state and helpers
+  let selectedColumnKey = $state<string>('');  // Dummy for DDSelector ('' = "Columns")
+
+  const columnOptions = $derived(
+      // Real columns (reactive visibility via option.visible for DDSelector icon mode)
+      columns.map((col): DropdownOption<string> => ({
+        value: col.key,
+        label: col.label,
+        visible: col.isVisible
+      })) as DropdownOption<string>[]
+  );
+
+  function toggleColumnVisibility(key: string) {
+    if (!key) return;  // Ignore dummy
+
+    const col = columns.find(c => c.key === key);
+    if (!col) return;
+
+    const wasVisible = col.isVisible;
+    col.isVisible = !col.isVisible;
+
+    // Optional: Auto-redistribute if newly visible (smooth fit, scales all visible)
+    if (!wasVisible) {
+      setTimeout(redistributeWidths, 0);  // Post-render
+    }
+  }
 
   // Only visible columns for rendering/width calcs (object refs preserved for mutation)
   const visibleColumns = $derived(columns.filter(col => col.isVisible));
@@ -60,9 +87,9 @@
     `${48 + 128 + visibleColumns.reduce((sum, col) => sum + parseFloat(col.width.slice(0, -2)), 0)}px`
   );
 
-  // On mount: distribute available viewport space proportionally across visible columns
+  // Redistribute available viewport space proportionally across visible columns
   // so the table fills the browser exactly at load time (no horizontal scroll needed by default).
-  onMount(() => {
+  function redistributeWidths() {
     // Sidebar is now in normal flow (flex sibling of main), so its width is subtracted directly.
     // main has px-6 (24px each side = 48px total). Scrollbar gutter on body div = 8px.
     const sidebarW = window.innerWidth >= 1024 ? 256 : 0;
@@ -80,6 +107,11 @@
         Math.floor(available * defaultW[i] / totalDefault)
       )}px`;
     });
+  }
+
+  // On mount: distribute available viewport space proportionally across visible columns
+  onMount(() => {
+    redistributeWidths();  // Initial distribution
   });
 
   // Keep layoutMinWidth store in sync so layout.svelte's inner wrapper knows the total
@@ -339,6 +371,18 @@
         <!-- The followign line is commented out to attempt replacing style="width: {tableWidth}" with w-full in the next div element --->
         <!-- <div class="flex flex-col md:flex-row gap-4 items-center justify-between" style="width: {tableWidth}"> -->
         <div class="flex flex-col md:flex-row gap-4 items-center justify-between w-full">
+          <!-- Columns Toggle (left of filter input, above checkbox col; uses DDSelector SVG arrow) -->
+          <DDSelector
+            bind:value={selectedColumnKey}
+            options={columnOptions}
+            onChange={toggleColumnVisibility}
+            stickyDropdownTitle={true}
+            dummyValue="Columns"
+            enableMultiSelect={true}
+            setMDIstatusIcon="CircleMedium"
+            iconClass="w-4 h-4 flex-shrink-0"
+            class="w-28 h-7.5 flex-shrink-0"
+          />
           <input
             bind:value={filterName}
             placeholder="Filter torrents by name..."
