@@ -35,14 +35,15 @@ export async function refreshAll() {
 
   try {
     const [torrentRes, sessionRes] = await Promise.all([
-      callRpc<{ torrents?: Torrent[] }>('torrent-get', { 
-        fields: torrentFields 
+      callRpc<{ torrents?: Torrent[] }>('torrent-get', {
+        fields: torrentFields
       }),
       callRpc('session-get')
     ]);
 
     torrents.set(torrentRes.torrents ?? []);
     session.set(sessionRes as Record<string, unknown>);
+	await refreshSession();  // Ensure full session fields
   } catch (err: unknown) {
     console.error('Refresh failed:', err);
     const message = err instanceof Error ? err.message : 'Failed to connect to Transmission';
@@ -147,3 +148,23 @@ export async function updateFilePriorities(torrentId: number, priorities: Record
 
   return callRpc('torrent-set', args);
 }
+
+// Phase 3: Dedicated session refresh/update (for Settings modal)
+export async function refreshSession() {
+  try {
+    const res = await callRpc('session-get');
+    session.set(res as Record<string, unknown>);
+  } catch (err: unknown) {
+    error.set(err instanceof Error ? err.message : 'Session refresh failed');
+  }
+}
+
+export async function updateSession(updates: Record<string, unknown>) {
+  try {
+    await callRpc('session-set', updates);
+    await refreshSession();  // Auto-refresh after apply
+  } catch (err: unknown) {
+    error.set(err instanceof Error ? err.message : 'Settings save failed');
+  }
+}
+

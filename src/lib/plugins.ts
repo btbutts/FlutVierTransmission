@@ -9,8 +9,11 @@ import Plus from '~icons/mdi/plus';
 import CircleSmall from '~icons/mdi/circle-small';
 import CircleMedium from '~icons/mdi/circle-medium';
 import Circle from '~icons/mdi/circle';
+import Cogs from '~icons/mdi/cogs';
+import Check from '~icons/mdi/check';
+import Close from '~icons/mdi/close';
 
-export { Play, Pause, Delete, Refresh, Plus };
+export { Play, Pause, Delete, Refresh, Plus, Cogs, Check, Close };
 
 // Special export object to select icons by name for
 // dropdown status indicators next to its selected options

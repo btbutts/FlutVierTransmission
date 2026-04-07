@@ -14,12 +14,13 @@ export {
     removeTorrents,
     performActionAndRefresh,
     updateFilePriorities,
-    layoutMinWidth
-} from './stores';
-export {
+    layoutMinWidth,
+    refreshSession,
+    updateSession,
     currentTorrent,
     refreshTorrent,
     setFilePriorities
 } from './stores';
 export type { Torrent } from './types';
 export type { DropdownOption } from './components/dropdown.svelte';
+export { windowPopUp } from './helpers';

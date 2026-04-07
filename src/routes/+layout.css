@@ -1,5 +1,5 @@
 /* src/routes/+layout.css - Tailwind v4 entrypoint (NEW FILE) */
-@import "tailwindcss";
+@import 'tailwindcss';
 
 /* Ensure consistent background and blur */
 body {
@@ -15,7 +15,7 @@ body {
 
 html {
     height: 100vh;
-    overflow: hidden;   /* scroll is handled by the content row container, not the page */
+    overflow: hidden; /* scroll is handled by the content row container, not the page */
     margin: 0;
     padding: 0;
 }
