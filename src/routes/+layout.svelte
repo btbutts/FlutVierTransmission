@@ -18,6 +18,7 @@ import {
 
 import DDSelector from '$lib/components/DDSelector.svelte';
 import RefreshButton from '$lib/components/RefreshButton.svelte';
+import SettingsButton from '$lib/components/SettingsButton.svelte';
 import { createHorizontalScrollSync } from '$lib/horizontalScrollSync.svelte';
 
 import '@fontsource-variable/inter/index.css'; // Import the Inter variable font (supports weights 100-900)
@@ -25,7 +26,7 @@ import '@fontsource/inter/400.css'; // Import static weights as additional sourc
 import '@fontsource/inter/500.css';
 import '@fontsource/inter/600.css';
 
-import { Check, Close, Cogs, Plus } from '$lib/plugins';
+import { Check, Close, Plus } from '$lib/plugins';
 
 // Sidebar stats (computed from torrents; session lacks totals)
 const totalDownloaded = $derived(
@@ -113,14 +114,7 @@ $effect(() => {
   <header
     class="fixed top-0 right-0 left-0 z-30 flex h-16 items-center justify-between border-b border-gray-200/50 bg-white/80 px-4 text-gray-900 shadow-sm backdrop-blur dark:border-gray-700/50 dark:bg-gray-800/80 dark:text-gray-100"
   >
-    <button
-      onclick={openSettings}
-      class="absolute top-1/2 left-4 -translate-y-1/2 rounded-lg p-1.5 text-gray-600 transition-all hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white"
-      aria-label="Settings"
-      title="Settings"
-    >
-      <Cogs class="h-5 w-5" />
-    </button>
+    <SettingsButton onclick={openSettings} class="absolute top-1/2 left-4 -translate-y-1/2" />
 
     <div class="flex min-w-0 flex-1 items-center justify-between pl-12 lg:pl-[264px]">
       <div class="flex min-w-0 items-center space-x-4">

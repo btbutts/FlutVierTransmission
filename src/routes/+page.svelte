@@ -33,7 +33,7 @@ let dragStartWidth = $state('');
 let dragStartRightWidth = $state('');
 
 // prettier-ignore
-const columns = $state<ColumnConfig[]>([ // prettier-ignore
+const columns = $state<ColumnConfig[]>([
     { key: 'name', label: 'Name', width: '256px', minWidth: '120px', align: 'left', sortable: true, resizable: true, isVisible: true },
     { key: 'status', label: 'Status', width: '112px', minWidth: '80px', align: 'center', sortable: true, resizable: true, isVisible: true },
     { key: 'totalSize', label: 'Size', width: '96px', minWidth: '72px', align: 'center', headerAlign: 'center', sortable: true, resizable: true, isVisible: true },

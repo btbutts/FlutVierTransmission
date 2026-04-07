@@ -1,25 +1,26 @@
 // place files you want to import through the `$lib` alias in this folder.
 // src/lib/plugins.ts
 import type { Component } from 'svelte';
-import Play from '~icons/mdi/play';
-import Pause from '~icons/mdi/pause';
-import Delete from '~icons/mdi/delete';
-import Refresh from '~icons/mdi/refresh';
-import Plus from '~icons/mdi/plus';
-import CircleSmall from '~icons/mdi/circle-small';
-import CircleMedium from '~icons/mdi/circle-medium';
-import Circle from '~icons/mdi/circle';
-import Cogs from '~icons/mdi/cogs';
 import Check from '~icons/mdi/check';
+import Circle from '~icons/mdi/circle';
+import CircleMedium from '~icons/mdi/circle-medium';
+import CircleSmall from '~icons/mdi/circle-small';
 import Close from '~icons/mdi/close';
+import Cog from '~icons/mdi/cog';
+import Cogs from '~icons/mdi/cogs';
+import Delete from '~icons/mdi/delete';
+import Pause from '~icons/mdi/pause';
+import Play from '~icons/mdi/play';
+import Plus from '~icons/mdi/plus';
+import Refresh from '~icons/mdi/refresh';
 
-export { Play, Pause, Delete, Refresh, Plus, Cogs, Check, Close };
+export { Play, Pause, Delete, Refresh, Plus, Cogs, Cog, Check, Close };
 
 // Special export object to select icons by name for
 // dropdown status indicators next to its selected options
 export const DDSelectorStatusIcons = {
-	CircleSmall,
-    CircleMedium,
-    Circle,
+  CircleSmall,
+  CircleMedium,
+  Circle
 } satisfies Record<string, Component<{ class?: string }>>;
 export type DropdownStatusIconName = keyof typeof DDSelectorStatusIcons;
