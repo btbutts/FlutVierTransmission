@@ -3,53 +3,152 @@
 
 /* Ensure consistent background and blur */
 body {
-    background-color: rgba(248, 250, 252, 1); /* gray-50 */
-    backdrop-filter: blur(8px); /* Mimics Tailwind's backdrop-blur-md */
+  background-color: rgba(248, 250, 252, 1); /* gray-50 */
+  backdrop-filter: blur(8px); /* Mimics Tailwind's backdrop-blur-md */
 }
 
 @media (prefers-color-scheme: dark) {
-    body {
-        background-color: #111827; /* gray-900 — matches main content area */
-    }
+  body {
+    background-color: #111827; /* gray-900 — matches main content area */
+  }
+}
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@custom-variant hover-dark (&:where(.dark, .dark *) :hover);
+
+@theme {
+  /* Truly custom value that isn't a default Tailwind color */
+  --color-ColorPalette-Scrollbar-thumb: rgba(28 31 43 / 0.514);
+
+  /* ====================== Semantic aliases ====================== */
+  /* Light mode defaults – these generate the utility classes */
+
+  /* Backgrounds */
+  --color-ColorPalette-bg-primary: rgb(248 250 252); /* light: gray-50 */
+  --color-ColorPalette-bg-secondary: rgb(255 255 255); /* light: white */
+  --color-ColorPalette-bg-tertiary: rgb(249 250 251); /* light: gray-50 */
+  --color-ColorPalette-bg-quaternary: rgb(229 231 235); /* light: gray-200 */
+  --color-ColorPalette-bg-quinary: rgb(156 163 175); /* light: gray-400 */
+
+  /* Text colors */
+  --color-ColorPalette-text-primary: rgb(17 24 39); /* light: gray-900 */
+  --color-ColorPalette-text-secondary: rgb(55 65 81); /* light: gray-700 */
+  --color-ColorPalette-text-tertiary: rgb(107 114 128); /* light: gray-500 */
+  --color-ColorPalette-text-quarternary: rgb(156 163 175); /* light: gray-400 */
+  --color-ColorPalette-text-quinary: rgb(31 41 55); /* light: gray-800 */
+
+  /* Borders */
+  --color-ColorPalette-border-primary: rgb(209 213 219); /* light: gray-300 */
+  --color-ColorPalette-border-secondary: rgb(229 231 235); /* light: gray-200 */
+  --color-ColorPalette-border-tertiary: rgb(209 213 219); /* light: gray-300 */
+
+  /* Modal */
+  --color-ColorPalette-modal-overlay: rgb(0 0 0); /* black */
+
+  --color-ColorPalette-modal-TxtAccent-primary: rgb(96 165 250); /* blue-400 */
+  --color-ColorPalette-modal-TxtAccent-secondary: rgb(37 99 235); /* blue-600 */
+  --color-ColorPalette-modal-TxtAccent-tertiary: rgb(30 64 175); /* blue-800 */
+
+  /* Button */
+  --color-ColorPalette-button-text-primary: rgb(255 255 255); /* white */
+  --color-ColorPalette-button-bg-hover-primary: rgb(229 231 235); /* light: gray-200 */
+  --color-ColorPalette-button-bg-hover-secondary: rgb(209 213 219); /* light: gray-300 */
+  --color-ColorPalette-button-bg-hover-tertiary: rgb(209 213 219); /* light: gray-300 */
+
+  --color-ColorPalette-button-SelectionRing-light: rgb(191 219 254); /* blue-200 */
+  --color-ColorPalette-button-SelectionRing-dark: rgb(30 64 175); /* blue-800 */
+
+  /* Modal ring colors (mode-specific) */
+  --color-ColorPalette-modal-ring-primary: rgb(17 24 39); /* light: gray-900 */
+  --color-ColorPalette-modal-ring-secondary: rgb(255 255 255); /* white */
+
+  /* Modal Tab Button Hover */
+  --color-ColorPalette-modal-tab-text-hover-primary: rgb(55 65 81); /* light: gray-700 */
+  --color-ColorPalette-modal-tab-text-hover-secondary: rgb(55 65 81); /* light: gray-700 */
+  --color-ColorPalette-modal-tab-text-hover-tertiary: rgb(31 41 55); /* light: gray-800 */
+
+  /* Modal Tab Button Selected */
+  --color-ColorPalette-modal-tab-selected-primary: rgb(37, 99, 235); /* blue-500 */
+
+  /* Input Box */
+  --color-ColorPalette-input-ring-focus-primary: rgb(37, 99, 235); /* blue-500 */
+}
+
+/* ====================== Dark mode overrides ====================== */
+/* These override the variables when .dark class is present on <html> */
+.dark {
+  /* Backgrounds */
+  --color-ColorPalette-bg-primary: rgb(17 24 39); /* dark: gray-900 */
+  --color-ColorPalette-bg-secondary: rgb(31 41 55); /* dark: gray-800 */
+  --color-ColorPalette-bg-tertiary: rgb(55 65 81); /* dark: gray-700 */
+  --color-ColorPalette-bg-quaternary: rgb(31 41 55); /* dark: gray-800 */
+  --color-ColorPalette-bg-quinary: rgb(55 65 81); /* dark: gray-700 */
+
+  /* Text colors */
+  --color-ColorPalette-text-primary: rgb(243 244 246); /* dark: gray-100 */
+  --color-ColorPalette-text-secondary: rgb(229 231 235); /* dark: gray-200 */
+  --color-ColorPalette-text-tertiary: rgb(209 213 219); /* dark: gray-300 */
+  --color-ColorPalette-text-quarternary: rgb(156 163 175); /* dark: gray-400 */
+  --color-ColorPalette-text-quinary: rgb(229 231 235); /* dark: gray-200 */
+
+  /* Borders */
+  --color-ColorPalette-border-primary: rgb(75 85 99); /* dark: gray-600 */
+  --color-ColorPalette-border-secondary: rgb(55 65 81); /* dark: gray-700 */
+  --color-ColorPalette-border-tertiary: rgb(55 65 81); /* dark: gray-700 */
+
+  /* Modal ring colors (mode-specific) */
+  --color-ColorPalette-modal-ring-primary: rgb(255 255 255); /* white */
+  --color-ColorPalette-modal-ring-secondary: rgb(17 24 39); /* dark: gray-900 */
+
+  /* Modal Tab Button Hover */
+  --color-ColorPalette-modal-tab-text-hover-primary: rgb(17 24 39); /* dark: gray-900 */
+  --color-ColorPalette-modal-tab-text-hover-secondary: rgb(243 244 246); /* dark: gray-100 */
+  --color-ColorPalette-modal-tab-hover-secondary: rgb(55 65 81); /* dark: gray-700 */
+
+  /* Button */
+  --color-ColorPalette-button-bg-hover-primary: rgb(75 85 99); /* dark: gray-600 */
+  --color-ColorPalette-button-bg-hover-secondary: rgb(55 65 81); /* dark: gray-700 */
+  --color-ColorPalette-button-bg-hover-tertiary: rgb(75 85 99); /* dark: gray-600 */
 }
 
 html {
-    height: 100vh;
-    overflow: hidden; /* scroll is handled by the content row container, not the page */
-    margin: 0;
-    padding: 0;
+  height: 100vh;
+  overflow: hidden; /* scroll is handled by the content row container, not the page */
+  margin: 0;
+  padding: 0;
 }
 
 body {
-    height: 100%;
-    overflow: visible;
-    margin: 0;
-    padding: 0;
+  height: 100%;
+  overflow: visible;
+  margin: 0;
+  padding: 0;
 }
 
 *::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+  width: 8px;
+  height: 8px;
 }
 
 *::-webkit-scrollbar-track {
-    background: transparent;
+  background: transparent;
 }
 
 *::-webkit-scrollbar-thumb {
-    background: rgba(28, 31, 43, 0.514); /* Subtle purple-gray like macOS */
-    border-radius: 9999px; /* Fully rounded ends */
-    min-height: 32px; /* Minimum thumb height for usability */
-    transition: background 0.2s;
+  background: rgba(28 31 43 / 0.514); /* Subtle purple-gray like macOS */
+  border-radius: 9999px; /* Fully rounded ends */
+  min-height: 32px; /* Minimum thumb height for usability */
+  transition: background 0.2s;
 }
 
 *::-webkit-scrollbar-thumb:hover,
 *::-webkit-scrollbar-thumb:active {
-    background: rgba(28, 31, 43, 0.514); /* Slightly darker on hover/active */
+  background: rgba(28 31 43 / 0.677); /* Slightly darker on hover/active */
 }
 
 /* Firefox scrollbar (fallback, thin/trackless) */
 * {
-    scrollbar-width: thin;
-    scrollbar-color: rgba(26, 46, 125, 0.677) transparent;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(26 46 125 / 0.677) transparent;
 }

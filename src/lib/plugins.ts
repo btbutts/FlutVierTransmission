@@ -9,12 +9,13 @@ import Close from '~icons/mdi/close';
 import Cog from '~icons/mdi/cog';
 import Cogs from '~icons/mdi/cogs';
 import Delete from '~icons/mdi/delete';
+import Loading from '~icons/mdi/loading';
 import Pause from '~icons/mdi/pause';
 import Play from '~icons/mdi/play';
 import Plus from '~icons/mdi/plus';
 import Refresh from '~icons/mdi/refresh';
 
-export { Play, Pause, Delete, Refresh, Plus, Cogs, Cog, Check, Close };
+export { Play, Pause, Delete, Refresh, Plus, Cogs, Cog, Check, Close, Loading };
 
 // Special export object to select icons by name for
 // dropdown status indicators next to its selected options

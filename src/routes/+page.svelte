@@ -395,12 +395,13 @@ function statusText(status: number, err: number, errString?: string): string {
             enableMultiSelect={true}
             setMDIstatusIcon="CircleMedium"
             iconClass="w-4 h-4 flex-shrink-0"
-            class="h-7.5 w-28 flex-shrink-0"
+            class="mx-auto h-10.5 w-28 flex-shrink-0"
+            dropdownHeight="p-[12px]"
           />
           <input
             bind:value={filterName}
             placeholder="Filter torrents by name..."
-            class="flex-1 rounded-xl border border-gray-300 p-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+            class="flex-1 rounded-md border border-gray-300 p-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
           />
           <div class="flex-shrink-0 text-sm text-gray-500 dark:text-gray-400">
             {filteredTorrents.length} torrents ({$selectedTorrents.length} selected)
