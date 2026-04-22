@@ -19,9 +19,8 @@ let {
 <button
   {onclick}
   class="group {classOverride} inline-flex h-9.5 w-9.5 shrink-0 items-center justify-center rounded-md bg-gray-700/90
-  p-0 text-white shadow-sm backdrop-blur-sm transition-all duration-200 hover:bg-gray-600 focus:ring-2
-  focus:ring-blue-500 focus:ring-offset-2 focus:outline-none active:scale-[0.97] active:bg-gray-800
-  dark:bg-gray-700/90 dark:hover:bg-gray-600 dark:focus:ring-offset-gray-900 dark:active:bg-gray-800"
+  p-0 text-white shadow-sm backdrop-blur-sm transition-all duration-200 hover:bg-gray-600 focus:outline-none active:scale-[0.97] active:bg-gray-800
+  dark:bg-gray-700/90 dark:hover:bg-gray-600 dark:active:bg-gray-800"
   aria-label="Settings"
   title="Settings"
 >

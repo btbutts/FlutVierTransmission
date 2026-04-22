@@ -230,7 +230,7 @@ $effect(() => {
           <input
             bind:value={newTorrentUrl}
             placeholder="Paste magnet link or .torrent URL"
-            class="border-ColorPalette-border-primary focus:ring-ColorPalette-input-ring-focus-primary bg-ColorPalette-bg-tertiary text-ColorPalette-text-tertiary focus:text-ColorPalette-text-primary w-full rounded-md border p-1.5 text-xs focus:ring-2"
+            class="border-ColorPalette-border-primary focus:border-ColorPalette-input-ring-focus-primary focus:ring-ColorPalette-input-ring-focus-primary bg-ColorPalette-bg-tertiary text-ColorPalette-text-tertiary focus:text-ColorPalette-text-primary w-full rounded-md border p-1.5 text-xs focus:ring-2 focus:outline-none"
           />
           <div class="flex space-x-3 pt-2">
             <button
@@ -318,7 +318,7 @@ $effect(() => {
                       event.currentTarget as HTMLInputElement
                     ).checked;
                   }}
-                  class="text-ColorPalette-modal-TxtAccent-secondary h-5 w-5 rounded border-gray-300 focus:ring-blue-500"
+                  class="text-ColorPalette-modal-TxtAccent-secondary h-5 w-5 rounded border-gray-300 focus:ring-blue-500 focus:outline-none"
                 />
                 <span class="text-ColorPalette-text-secondary text-sm font-medium"
                   >Alternative speed limits (turtle mode)</span
@@ -356,7 +356,7 @@ $effect(() => {
                   type="number"
                   bind:value={tempSettings['speed-limit-down']}
                   min="0"
-                  class="border-ColorPalette-border-primary focus:ring-ColorPalette-input-ring-focus-primary bg-ColorPalette-bg-tertiary text-ColorPalette-text-tertiary focus:text-ColorPalette-text-primary w-full rounded-md border p-1.5 text-xs focus:ring-2"
+                  class="border-ColorPalette-border-primary focus:border-ColorPalette-input-ring-focus-primary focus:ring-ColorPalette-input-ring-focus-primary bg-ColorPalette-bg-tertiary text-ColorPalette-text-tertiary focus:text-ColorPalette-text-primary w-full rounded-md border p-1.5 text-xs focus:ring-2 focus:outline-none"
                 />
               </div>
               <div>
@@ -370,7 +370,7 @@ $effect(() => {
                   type="number"
                   bind:value={tempSettings['speed-limit-up']}
                   min="0"
-                  class="border-ColorPalette-border-primary focus:ring-ColorPalette-input-ring-focus-primary bg-ColorPalette-bg-tertiary text-ColorPalette-text-tertiary focus:text-ColorPalette-text-primary w-full rounded-md border p-1.5 text-xs focus:ring-2"
+                  class="border-ColorPalette-border-primary focus:border-ColorPalette-input-ring-focus-primary focus:ring-ColorPalette-input-ring-focus-primary bg-ColorPalette-bg-tertiary text-ColorPalette-text-tertiary focus:text-ColorPalette-text-primary w-full rounded-md border p-1.5 text-xs focus:ring-2 focus:outline-none"
                 />
               </div>
             </div>
@@ -388,7 +388,7 @@ $effect(() => {
                   type="number"
                   bind:value={tempSettings['queue-stalled-minutes']}
                   min="0"
-                  class="border-ColorPalette-border-primary focus:ring-ColorPalette-input-ring-focus-primary bg-ColorPalette-bg-tertiary text-ColorPalette-text-tertiary focus:text-ColorPalette-text-primary w-full rounded-md border p-1.5 text-xs focus:ring-2"
+                  class="border-ColorPalette-border-primary focus:border-ColorPalette-input-ring-focus-primary focus:ring-ColorPalette-input-ring-focus-primary bg-ColorPalette-bg-tertiary text-ColorPalette-text-tertiary focus:text-ColorPalette-text-primary w-full rounded-md border p-1.5 text-xs focus:ring-2 focus:outline-none"
                 />
               </div>
               <!-- Add more: 'max-active-downloads', 'queue-enabled', etc. -->
@@ -400,7 +400,7 @@ $effect(() => {
                 >Peer Port: <input
                   type="number"
                   bind:value={tempSettings['peer-port']}
-                  class="border-ColorPalette-border-primary focus:ring-ColorPalette-input-ring-focus-primary bg-ColorPalette-bg-tertiary text-ColorPalette-text-tertiary focus:text-ColorPalette-text-primary ml-2 w-24 rounded-md border p-1.5 text-xs focus:ring-2"
+                  class="border-ColorPalette-border-primary focus:border-ColorPalette-input-ring-focus-primary focus:ring-ColorPalette-input-ring-focus-primary bg-ColorPalette-bg-tertiary text-ColorPalette-text-tertiary focus:text-ColorPalette-text-primary ml-2 w-24 rounded-md border p-1.5 text-xs focus:ring-2 focus:outline-none"
                 /></label
               >
               <!-- Toggles: dht-enabled, pex-enabled, utp-enabled -->
@@ -412,7 +412,7 @@ $effect(() => {
                 >RPC Whitelist: <input
                   type="text"
                   bind:value={tempSettings['rpc-whitelist']}
-                  class="border-ColorPalette-border-primary focus:ring-ColorPalette-input-ring-focus-primary bg-ColorPalette-bg-tertiary text-ColorPalette-text-tertiary focus:text-ColorPalette-text-primary w-full rounded-md border p-1.5 text-xs focus:ring-2"
+                  class="border-ColorPalette-border-primary focus:border-ColorPalette-input-ring-focus-primary focus:ring-ColorPalette-input-ring-focus-primary bg-ColorPalette-bg-tertiary text-ColorPalette-text-tertiary focus:text-ColorPalette-text-primary w-full rounded-md border p-1.5 text-xs focus:ring-2 focus:outline-none"
                 /></label
               >
             </div>
@@ -423,7 +423,7 @@ $effect(() => {
                 >Disk Cache (MiB): <input
                   type="number"
                   bind:value={tempSettings['cache-size-mb']}
-                  class="border-ColorPalette-border-primary focus:ring-ColorPalette-input-ring-focus-primary bg-ColorPalette-bg-tertiary text-ColorPalette-text-tertiary focus:text-ColorPalette-text-primary ml-2 w-24 rounded-md border p-1.5 text-xs focus:ring-2"
+                  class="border-ColorPalette-border-primary focus:border-ColorPalette-input-ring-focus-primary focus:ring-ColorPalette-input-ring-focus-primary bg-ColorPalette-bg-tertiary text-ColorPalette-text-tertiary focus:text-ColorPalette-text-primary ml-2 w-24 rounded-md border p-1.5 text-xs focus:ring-2 focus:outline-none"
                 /></label
               >
             </div>

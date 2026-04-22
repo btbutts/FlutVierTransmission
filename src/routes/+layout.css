@@ -74,7 +74,7 @@ body {
   --color-ColorPalette-modal-tab-selected-primary: rgb(37, 99, 235); /* blue-500 */
 
   /* Input Box */
-  --color-ColorPalette-input-ring-focus-primary: rgb(37, 99, 235); /* blue-500 */
+  --color-ColorPalette-input-ring-focus-primary: rgb(59 130 246); /* blue-500 */
 }
 
 /* ====================== Dark mode overrides ====================== */
@@ -114,6 +114,9 @@ body {
   --color-ColorPalette-button-bg-hover-primary: rgb(75 85 99); /* dark: gray-600 */
   --color-ColorPalette-button-bg-hover-secondary: rgb(55 65 81); /* dark: gray-700 */
   --color-ColorPalette-button-bg-hover-tertiary: rgb(75 85 99); /* dark: gray-600 */
+
+  /* Input Box */
+  --color-ColorPalette-input-ring-focus-primary: rgb(59 130 246); /* blue-500 */
 }
 
 html {
@@ -128,6 +131,15 @@ body {
   overflow: visible;
   margin: 0;
   padding: 0;
+}
+
+:global(input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-visible) {
+  outline: none;
+  outline-offset: 0;
+}
+
+:global(input:focus-visible, textarea:focus-visible, select:focus-visible) {
+  border-color: var(--color-ColorPalette-input-ring-focus-primary);
 }
 
 *::-webkit-scrollbar {

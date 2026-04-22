@@ -402,7 +402,7 @@ function statusText(status: number, err: number, errString?: string): string {
           <input
             bind:value={filterName}
             placeholder="Filter torrents by name..."
-            class="border-ColorPalette-border-quaternary bg-ColorPalette-bg-tertiary/90 text-ColorPalette-text-primary text-md flex-1 rounded-md border p-[4px] focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+            class="border-ColorPalette-border-quaternary bg-ColorPalette-bg-tertiary/90 text-ColorPalette-text-primary text-md flex-1 rounded-md border p-[4px] focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none"
           />
           <div class="text-ColorPalette-text-senary flex-shrink-0 text-sm">
             {filteredTorrents.length} torrents ({$selectedTorrents.length} selected)
@@ -431,7 +431,7 @@ function statusText(status: number, err: number, errString?: string): string {
                   indeterminate={$selectedTorrents.length > 0 &&
                     $selectedTorrents.length < filteredTorrents.length}
                   onchange={(event: Event) => handleSelectAll(event)}
-                  class="h-4 w-4 rounded border-gray-300 text-blue-600 shadow-sm focus:ring-blue-500"
+                  class="h-4 w-4 rounded border-gray-300 text-blue-600 shadow-sm focus:ring-blue-500 focus:outline-none"
                 />
               </th>
               <!-- Dynamic Resizable THs: Name pl-0 (abut checkbox), truncate all -->

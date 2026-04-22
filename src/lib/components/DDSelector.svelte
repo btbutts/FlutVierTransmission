@@ -161,8 +161,8 @@ $effect(() => {
     aria-expanded={dropdown.open}
     class="w-full {DDHeightOverride} bg-ColorPalette-bg-tertiary/90 flex items-center justify-between rounded-md
            border border-gray-300 {DDTextSizeOverride}
-           text-gray-900 transition-all hover:bg-gray-50
-           focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:text-gray-100 dark:hover:bg-gray-600"
+           focus:border-ColorPalette-input-ring-focus-primary focus:ring-ColorPalette-input-ring-focus-primary text-gray-900
+           transition-all hover:bg-gray-50 focus:ring-2 focus:outline-none dark:border-gray-600 dark:text-gray-100 dark:hover:bg-gray-600"
   >
     <span class="truncate">{dropdown.selectedLabel}</span>
     <svg
