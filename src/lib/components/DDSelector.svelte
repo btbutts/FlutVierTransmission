@@ -27,6 +27,8 @@ interface Props {
   iconClass?: string;
   /** Optional Set the dropdown height */
   dropdownHeight?: string;
+  /** Optional Set the dropdown text size (does not affect dropdown options list) */
+  dropdownBtnTxtSize?: string;
 }
 
 let {
@@ -44,7 +46,8 @@ let {
   enableMultiSelect = false, // If true, dropdown stays open after selection (closes only on outside click or Esc)
   setMDIstatusIcon, // MDI icon name for status indicator (e.g., 'CircleSmall')
   iconClass: iconClasses = '', // Optional additional classes for the MDI status icon
-  dropdownHeight: DDHeightOverride = 'p-1.5' // Optional dropdown height
+  dropdownHeight: DDHeightOverride = 'p-1.5', // Optional dropdown height
+  dropdownBtnTxtSize: DDTextSizeOverride = 'text-xs' // Optional dropdown text size
 }: Props = $props();
 
 let rootRef = $state<HTMLDivElement | null>(null);
@@ -151,10 +154,10 @@ $effect(() => {
     onkeydown={dropdown.handleKeydown}
     aria-haspopup="listbox"
     aria-expanded={dropdown.open}
-    class="w-full {DDHeightOverride} flex items-center justify-between rounded-md border
-           border-gray-300 bg-white/90 text-xs text-gray-900
-           transition-all hover:bg-gray-50 focus:border-blue-500
-           focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700/90 dark:text-gray-100 dark:hover:bg-gray-600"
+    class="w-full {DDHeightOverride} bg-ColorPalette-bg-tertiary/90 flex items-center justify-between rounded-md
+           border border-gray-300 {DDTextSizeOverride}
+           text-gray-900 transition-all hover:bg-gray-50
+           focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:text-gray-100 dark:hover:bg-gray-600"
   >
     <span class="truncate">{dropdown.selectedLabel}</span>
     <svg

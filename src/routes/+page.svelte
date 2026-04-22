@@ -396,14 +396,15 @@ function statusText(status: number, err: number, errString?: string): string {
             setMDIstatusIcon="CircleMedium"
             iconClass="w-4 h-4 flex-shrink-0"
             class="mx-auto h-10.5 w-28 flex-shrink-0"
-            dropdownHeight="p-[12px]"
+            dropdownHeight="p-[8px]"
+            dropdownBtnTxtSize="text-md"
           />
           <input
             bind:value={filterName}
             placeholder="Filter torrents by name..."
-            class="flex-1 rounded-md border border-gray-300 p-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+            class="border-ColorPalette-border-quaternary bg-ColorPalette-bg-tertiary/90 text-ColorPalette-text-primary flex-1 rounded-md border p-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 text-md"
           />
-          <div class="flex-shrink-0 text-sm text-gray-500 dark:text-gray-400">
+          <div class="flex-shrink-0 text-sm text-ColorPalette-text-senary">
             {filteredTorrents.length} torrents ({$selectedTorrents.length} selected)
           </div>
         </div>

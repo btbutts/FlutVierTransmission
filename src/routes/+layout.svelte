@@ -330,11 +330,11 @@ $effect(() => {
                     Encryption
                   </div>
                   <DDSelector
-                    value={tempSettings['encryption'] ?? 0}
+                    value={tempSettings['encryption'] ?? 'tolerated'}
                     options={[
-                      { value: 0, label: 'Allow any' },
-                      { value: 1, label: 'Prefer encrypted' },
-                      { value: 2, label: 'Require encrypted' }
+                      { value: 'tolerated', label: 'Allow any' },
+                      { value: 'preferred', label: 'Prefer encrypted' },
+                      { value: 'required', label: 'Require encrypted' }
                     ]}
                     onChange={(v) => (tempSettings['encryption'] = v)}
                     class="mx-0 w-40"
@@ -438,7 +438,7 @@ $effect(() => {
             class="bg-ColorPalette-bg-quinary hover:bg-ColorPalette-button-bg-hover-tertiary text-ColorPalette-text-quinary hover:text-ColorPalette-modal-tab-text-hover-secondary rounded-md px-6 py-2 text-sm transition-colors"
             >Reset</button
           >
-          <SaveButton saveStatus={saveStatus} onclick={saveSettings} />
+          <SaveButton {saveStatus} onclick={saveSettings} />
           {#if saveStatus === 'error'}
             <div class="flex items-center rounded-xl bg-red-100 px-4 py-2 text-sm text-red-800">
               Save failed (check console)

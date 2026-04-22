@@ -37,11 +37,13 @@ body {
   --color-ColorPalette-text-tertiary: rgb(107 114 128); /* light: gray-500 */
   --color-ColorPalette-text-quarternary: rgb(156 163 175); /* light: gray-400 */
   --color-ColorPalette-text-quinary: rgb(31 41 55); /* light: gray-800 */
+  --color-ColorPalette-text-senary: rgb(107 114 128); /* light: gray-500 */
 
   /* Borders */
   --color-ColorPalette-border-primary: rgb(209 213 219); /* light: gray-300 */
   --color-ColorPalette-border-secondary: rgb(229 231 235); /* light: gray-200 */
   --color-ColorPalette-border-tertiary: rgb(209 213 219); /* light: gray-300 */
+  --color-ColorPalette-border-quaternary: rgb(209 213 219); /* light: gray-300 */
 
   /* Modal */
   --color-ColorPalette-modal-overlay: rgb(0 0 0); /* black */
@@ -91,11 +93,13 @@ body {
   --color-ColorPalette-text-tertiary: rgb(209 213 219); /* dark: gray-300 */
   --color-ColorPalette-text-quarternary: rgb(156 163 175); /* dark: gray-400 */
   --color-ColorPalette-text-quinary: rgb(229 231 235); /* dark: gray-200 */
+  --color-ColorPalette-text-senary: rgb(156 163 175); /* dark: gray-400 */
 
   /* Borders */
   --color-ColorPalette-border-primary: rgb(75 85 99); /* dark: gray-600 */
   --color-ColorPalette-border-secondary: rgb(55 65 81); /* dark: gray-700 */
   --color-ColorPalette-border-tertiary: rgb(55 65 81); /* dark: gray-700 */
+  --color-ColorPalette-border-quaternary: rgb(75 85 99); /* dark: gray-600 */
 
   /* Modal ring colors (mode-specific) */
   --color-ColorPalette-modal-ring-primary: rgb(255 255 255); /* white */
