@@ -75,6 +75,11 @@ export function createDropdown<T = number>({
     highlightedIndex = index;
   }
 
+  // Sync internal value from an external prop change (no onChange fired)
+  function sync(externalValue: T) {
+    value = externalValue;
+  }
+
   function handleKeydown(e: KeyboardEvent) {
     if (!open) return;
 
@@ -144,6 +149,7 @@ export function createDropdown<T = number>({
     close,
     handleKeydown,
     setHighlightedIndex,
+    sync,
 
     // Helpers
     options,

@@ -94,6 +94,11 @@ function updateMenuPosition() {
   menuStyle = `top: ${rect.top}px; left: ${rect.left}px; min-width: ${rect.width}px; width: max-content;`;
 }
 
+// Sync internal dropdown value when the value prop changes externally
+$effect(() => {
+  dropdown.sync(value);
+});
+
 // Outside click handler
 $effect(() => {
   if (!dropdown.open) {

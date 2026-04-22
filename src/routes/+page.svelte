@@ -395,16 +395,16 @@ function statusText(status: number, err: number, errString?: string): string {
             enableMultiSelect={true}
             setMDIstatusIcon="CircleMedium"
             iconClass="w-4 h-4 flex-shrink-0"
-            class="mx-auto h-10.5 w-28 flex-shrink-0"
-            dropdownHeight="p-[8px]"
+            class="mx-auto w-28 flex-shrink-0"
+            dropdownHeight="p-[4px]"
             dropdownBtnTxtSize="text-md"
           />
           <input
             bind:value={filterName}
             placeholder="Filter torrents by name..."
-            class="border-ColorPalette-border-quaternary bg-ColorPalette-bg-tertiary/90 text-ColorPalette-text-primary flex-1 rounded-md border p-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 text-md"
+            class="border-ColorPalette-border-quaternary bg-ColorPalette-bg-tertiary/90 text-ColorPalette-text-primary text-md flex-1 rounded-md border p-[4px] focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
           />
-          <div class="flex-shrink-0 text-sm text-ColorPalette-text-senary">
+          <div class="text-ColorPalette-text-senary flex-shrink-0 text-sm">
             {filteredTorrents.length} torrents ({$selectedTorrents.length} selected)
           </div>
         </div>
@@ -751,7 +751,7 @@ function statusText(status: number, err: number, errString?: string): string {
                   </td>
                   <td class="p-3 text-center">
                     <DDSelector
-                      value={filePriorities[i] ?? stat.priority}
+                      value={filePriorities[i] ?? (!stat.wanted ? -2 : stat.priority)}
                       onChange={(newValue) => {
                         filePriorities = {
                           ...filePriorities,

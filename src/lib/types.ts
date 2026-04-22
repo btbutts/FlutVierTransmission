@@ -10,9 +10,9 @@ export interface File {
 
 export interface FileStat {
   bytesCompleted: number;
-  desired: boolean;
+  wanted: boolean;   // true = file is queued to download; false = skipped
   have: number;
-  priority: number;  // -2 skip, -1 low, 0 normal, 1 high
+  priority: number;  // -1 low, 0 normal, 1 high (Transmission never returns -2; use !wanted for skip)
 }
 
 export interface Torrent {

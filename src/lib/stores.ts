@@ -2,6 +2,7 @@
 // Reactive state using Svelte 5 runes + stores (mirrors original Flood's state management)
 
 import { writable } from 'svelte/store';
+
 import { callRpc, ensureSessionId } from './rpc';
 import type { Torrent } from './types';
 
@@ -17,6 +18,7 @@ export const session = writable<Record<string, unknown>>({});
 export const isLoading = writable(false);
 export const error = writable<string | null>(null);
 
+// prettier-ignore
 // Common fields we want for the torrent list (expand later)
 const torrentFields = [
   'id', 'name', 'status', 'percentDone', 'totalSize', 'sizeWhenDone',
@@ -31,7 +33,7 @@ export async function refreshAll() {
   isLoading.set(true);
   error.set(null);
 
-  await ensureSessionId();  // Ensure session before parallel calls
+  await ensureSessionId(); // Ensure session before parallel calls
 
   try {
     const [torrentRes, sessionRes] = await Promise.all([
@@ -43,7 +45,7 @@ export async function refreshAll() {
 
     torrents.set(torrentRes.torrents ?? []);
     session.set(sessionRes as Record<string, unknown>);
-	await refreshSession();  // Ensure full session fields
+    await refreshSession(); // Ensure full session fields
   } catch (err: unknown) {
     console.error('Refresh failed:', err);
     const message = err instanceof Error ? err.message : 'Failed to connect to Transmission';
@@ -55,8 +57,9 @@ export async function refreshAll() {
 
 // Example helper for adding a torrent (magnet or URL) - we'll expand this soon
 export async function addTorrent(
-    filename: string,
-    options: { paused?: boolean; downloadDir?: string } = {}) {
+  filename: string,
+  options: { paused?: boolean; downloadDir?: string } = {}
+) {
   return callRpc('torrent-add', {
     filename,
     paused: options.paused ?? false,
@@ -77,6 +80,7 @@ export async function removeTorrents(ids: number[], deleteData = false) {
   return callRpc('torrent-remove', { ids, 'delete-local-data': deleteData });
 }
 
+// prettier-ignore
 // Bulk/single action + auto-refresh
 export async function performActionAndRefresh(ids: number[], action: 'start' | 'stop' | 'remove') {
   try {
@@ -118,7 +122,7 @@ export async function setFilePriorities(id: number, fileIds: number[], priority:
     'priority-high': priority === 1 ? fileIds : [],
     'priority-low': priority === -1 ? fileIds : [],
     'priority-normal': priority === 0 ? fileIds : [],
-    'files-wanted': priority >= 0 ? fileIds : [],  // Skip = -2, no want
+    'files-wanted': priority >= 0 ? fileIds : [], // wanted for high/low/normal, unwanted for -2
     'files-unwanted': priority === -2 ? fileIds : []
   });
 }
@@ -130,6 +134,7 @@ export async function updateFilePriorities(torrentId: number, priorities: Record
   const normal: number[] = [];
   const unwanted: number[] = [];
 
+  // prettier-ignore
   for (const [idxStr, prio] of Object.entries(priorities)) {
     const idx = Number(idxStr);
     switch (prio) {
@@ -140,11 +145,13 @@ export async function updateFilePriorities(torrentId: number, priorities: Record
     }
   }
 
-  args['priority-high'] = high;
-  args['priority-low'] = low;
-  args['priority-normal'] = normal;
-  args['files-wanted'] = [...high, ...low, ...normal];
-  args['files-unwanted'] = unwanted;
+  if (high.length > 0) args['priority-high'] = high;
+  if (low.length > 0) args['priority-low'] = low;
+  if (normal.length > 0) args['priority-normal'] = normal;
+
+  const wanted = [...high, ...low, ...normal];
+  if (wanted.length > 0) args['files-wanted'] = wanted;
+  if (unwanted.length > 0) args['files-unwanted'] = unwanted;
 
   return callRpc('torrent-set', args);
 }
@@ -162,9 +169,8 @@ export async function refreshSession() {
 export async function updateSession(updates: Record<string, unknown>) {
   try {
     await callRpc('session-set', updates);
-    await refreshSession();  // Auto-refresh after apply
+    await refreshSession(); // Auto-refresh after apply
   } catch (err: unknown) {
     error.set(err instanceof Error ? err.message : 'Settings save failed');
   }
 }
-
