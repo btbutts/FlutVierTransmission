@@ -174,3 +174,9 @@ export async function updateSession(updates: Record<string, unknown>) {
     error.set(err instanceof Error ? err.message : 'Settings save failed');
   }
 }
+
+export async function updateBlocklist(): Promise<number> {
+  const res = await callRpc<{ 'blocklist-size': number }>('blocklist-update');
+  await refreshSession();
+  return res['blocklist-size'];
+}

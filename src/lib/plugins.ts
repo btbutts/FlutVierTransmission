@@ -14,8 +14,9 @@ import Pause from '~icons/mdi/pause';
 import Play from '~icons/mdi/play';
 import Plus from '~icons/mdi/plus';
 import Refresh from '~icons/mdi/refresh';
+import TimerEdit from '~icons/mdi/timer-edit';
 
-export { Play, Pause, Delete, Refresh, Plus, Cogs, Cog, Check, Close, Loading };
+export { Play, Pause, Delete, Refresh, Plus, Cogs, Cog, Check, Close, Loading, TimerEdit };
 
 // Special export object to select icons by name for
 // dropdown status indicators next to its selected options

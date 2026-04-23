@@ -1,8 +1,4 @@
 <script lang="ts">
-// Temp for testing dark mode toggle;
-// will be replaced by a proper theme system in Phase 3
-import { browser } from '$app/environment';
-
 import './+layout.css';
 
 import {
@@ -11,27 +7,22 @@ import {
   isLoading,
   performActionAndRefresh,
   refreshAll,
-  refreshSession,
   selectedTorrents,
-  session,
   torrents,
-  updateSession,
-  windowPopUp,
   type Torrent
 } from '$lib';
 
-import DDSelector from '$lib/components/DDSelector.svelte';
 import RefreshButton from '$lib/components/RefreshButton.svelte';
-import SaveButton from '$lib/components/SaveButton.svelte';
 import SettingsButton from '$lib/components/SettingsButton.svelte';
+import SettingsModal from '$lib/components/SettingsModal.svelte';
 import { createHorizontalScrollSync } from '$lib/horizontalScrollSync.svelte';
 
-import '@fontsource-variable/inter/index.css'; // Import the Inter variable font (supports weights 100-900)
-import '@fontsource/inter/400.css'; // Import static weights as additional sources for the "Inter" family
+import '@fontsource-variable/inter/index.css';
+import '@fontsource/inter/400.css';
 import '@fontsource/inter/500.css';
 import '@fontsource/inter/600.css';
 
-import { Close, Plus } from '$lib/plugins';
+import { Plus } from '$lib/plugins';
 
 // Sidebar stats (computed from torrents; session lacks totals)
 const totalDownloaded = $derived(
@@ -48,48 +39,8 @@ const activeCount = $derived($torrents.filter((t: Torrent) => [4, 5, 6].includes
 
 let addModalOpen = $state(false);
 let newTorrentUrl = $state('');
-// Temp for testing dark mode toggle;
-// will be replaced by a proper theme system in Phase 3
-const isDarkMode = true;
-let { children } = $props();
-
-// Phase 3: Settings Modal
-type SettingsTab = 'general' | 'speeds' | 'queue' | 'ports' | 'remote' | 'disk';
-
 let settingsOpen = $state(false);
-let tempSettings = $state<Record<string, unknown>>({}); // Editable copy
-let activeTab = $state<SettingsTab>('general');
-let saveStatus = $state<'idle' | 'saving' | 'success' | 'error'>('idle');
-const settingsTabs: Array<{ id: SettingsTab; label: string }> = [
-  { id: 'general', label: 'General' },
-  { id: 'speeds', label: 'Speeds' },
-  { id: 'queue', label: 'Queue' },
-  { id: 'ports', label: 'Ports' },
-  { id: 'remote', label: 'Remote' },
-  { id: 'disk', label: 'Disk' }
-];
-
-function openSettings() {
-  settingsOpen = true;
-  tempSettings = { ...$session }; // Copy current session
-  saveStatus = 'idle';
-  void refreshSession(); // Fresh data
-}
-
-async function saveSettings() {
-  saveStatus = 'saving';
-  try {
-    await updateSession(tempSettings);
-    saveStatus = 'success';
-  } catch {
-    saveStatus = 'error';
-  }
-}
-
-function closeSettings() {
-  settingsOpen = false;
-  tempSettings = {};
-}
+let { children } = $props();
 
 const scrollSync = createHorizontalScrollSync();
 
@@ -106,16 +57,6 @@ async function handleAdd() {
   }
 }
 
-// Temp for testing dark mode toggle;
-// will be replaced by a proper theme system in Phase 3
-$effect(() => {
-  if (!browser) {
-    return;
-  }
-
-  document.documentElement.classList.toggle('dark', isDarkMode);
-});
-
 $effect(() => {
   // Auto-refresh every 20s
   refreshAll();
@@ -129,7 +70,7 @@ $effect(() => {
   <header
     class="text-ColorPalette-text-primary/80 border-ColorPalette-border-secondary/50 bg-ColorPalette-bg-secondary/80 fixed top-0 right-0 left-0 z-30 flex h-16 items-center justify-between border-b px-4 shadow-sm backdrop-blur"
   >
-    <SettingsButton onclick={openSettings} class="absolute top-1/2 left-4 -translate-y-1/2" />
+    <SettingsButton onclick={() => (settingsOpen = true)} class="absolute top-1/2 left-4 -translate-y-1/2" />
 
     <div class="flex min-w-0 flex-1 items-center justify-between pl-12 lg:pl-[264px]">
       <div class="flex min-w-0 items-center space-x-4">
@@ -210,7 +151,7 @@ $effect(() => {
     <div style="width: {scrollSync.syncScrollerWidth}; height: 1px;"></div>
   </div>
 
-  <!-- Add Torrent Modal (Flood-like) -->
+  <!-- Add Torrent Modal -->
   {#if addModalOpen}
     <div
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
@@ -252,202 +193,9 @@ $effect(() => {
       </div>
     </div>
   {/if}
-  <!-- Phase 3: Settings Modal (exceeds Flood: tabs, reactive, full RPC coverage) -->
-  {#if settingsOpen}
-    <div
-      use:windowPopUp
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-      role="dialog"
-      tabindex="-1"
-      aria-modal="true"
-      aria-labelledby="settings-title"
-      onclick={(event) => event.target === event.currentTarget && closeSettings()}
-      onkeydown={(event) => event.key === 'Escape' && closeSettings()}
-    >
-      <div
-        class="bg-ColorPalette-bg-secondary/95 ring-ColorPalette-modal-ring-secondary/50 mx-4 flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-3xl shadow-[0_0_0_1px_rgba(0,0,0,0.15),0_0_40px_16px_rgba(0,0,0,0.65),0_0_120px_60px_rgba(0,0,0,0.5)] ring-1 backdrop-blur-xl"
-      >
-        <!-- Sticky Header -->
-        <div
-          class="border-ColorPalette-border-tertiary/50 bg-ColorPalette-bg-quaternary/95 sticky top-0 z-20 flex flex-shrink-0 items-center justify-between rounded-t-3xl border-b p-6 backdrop-blur-md"
-        >
-          <h2
-            id="settings-title"
-            class="text-ColorPalette-text-secondary flex-1 text-2xl font-bold"
-          >
-            Settings
-          </h2>
-          <div class="flex items-center space-x-2">
-            <button
-              onclick={closeSettings}
-              class="bg-ColorPalette-bg-quinary hover:bg-ColorPalette-button-bg-hover-tertiary text-ColorPalette-text-quinary hover:text-ColorPalette-modal-tab-text-hover-secondary rounded-md p-2 transition-colors"
-              aria-label="Close"
-            >
-              <Close class="h-5 w-5 " />
-            </button>
-          </div>
-        </div>
-        <!-- Tabs -->
-        <div
-          class="border-ColorPalette-border-secondary/50 bg-ColorPalette-bg-tertiary/50 border-b"
-        >
-          <nav class="-mb-px flex">
-            {#each settingsTabs as tab (tab.id)}
-              <button
-                onclick={() => (activeTab = tab.id)}
-                class="border-b-2 px-4 py-2 text-sm font-medium {activeTab === tab.id
-                  ? 'border-ColorPalette-modal-tab-selected-primary bg-ColorPalette-bg-secondary/50 text-ColorPalette-modal-tab-selected-primary'
-                  : 'text-ColorPalette-text-tertiary hover:text-ColorPalette-modal-tab-text-hover-secondary hover:bg-ColorPalette-bg-tertiary/70 border-transparent'} transition-colors"
-              >
-                {tab.label}
-              </button>
-            {/each}
-          </nav>
-        </div>
-        <!-- Scrollable Content -->
-        <div class="min-h-0 flex-1 space-y-6 overflow-y-auto p-6">
-          {#if activeTab === 'general'}
-            <!-- Example: RPC fields like 'alt-speed-enabled', 'encryption' -->
-            <div class="text-ColorPalette-text-secondary space-y-4">
-              <label class="flex items-center space-x-3">
-                <input
-                  type="checkbox"
-                  checked={Boolean(tempSettings['alt-speed-enabled'])}
-                  onchange={(event) => {
-                    tempSettings['alt-speed-enabled'] = (
-                      event.currentTarget as HTMLInputElement
-                    ).checked;
-                  }}
-                  class="text-ColorPalette-modal-TxtAccent-secondary h-5 w-5 rounded border-gray-300 focus:ring-blue-500 focus:outline-none"
-                />
-                <span class="text-ColorPalette-text-secondary text-sm font-medium"
-                  >Alternative speed limits (turtle mode)</span
-                >
-              </label>
-              <div class="grid grid-cols-2 gap-4">
-                <div>
-                  <div class="text-ColorPalette-text-secondary mb-1 block text-sm font-medium">
-                    Encryption
-                  </div>
-                  <DDSelector
-                    value={tempSettings['encryption'] ?? 'tolerated'}
-                    options={[
-                      { value: 'tolerated', label: 'Allow any' },
-                      { value: 'preferred', label: 'Prefer encrypted' },
-                      { value: 'required', label: 'Require encrypted' }
-                    ]}
-                    onChange={(v) => (tempSettings['encryption'] = v)}
-                    class="mx-0 w-40"
-                  />
-                </div>
-              </div>
-            </div>
-          {:else if activeTab === 'speeds'}
-            <!-- Speed limits -->
-            <div class="text-ColorPalette-text-secondary grid grid-cols-2 gap-6">
-              <div>
-                <label
-                  for="speed-limit-down"
-                  class="text-ColorPalette-text-secondary mb-2 block text-sm font-medium"
-                  >Download Limit (KiB/s)</label
-                >
-                <input
-                  id="speed-limit-down"
-                  type="number"
-                  bind:value={tempSettings['speed-limit-down']}
-                  min="0"
-                  class="border-ColorPalette-border-primary focus:border-ColorPalette-input-ring-focus-primary focus:ring-ColorPalette-input-ring-focus-primary bg-ColorPalette-bg-tertiary text-ColorPalette-text-tertiary focus:text-ColorPalette-text-primary w-full rounded-md border p-1.5 text-xs focus:ring-2 focus:outline-none"
-                />
-              </div>
-              <div>
-                <label
-                  for="speed-limit-up"
-                  class="text-ColorPalette-text-secondary mb-2 block text-sm font-medium"
-                  >Upload Limit (KiB/s)</label
-                >
-                <input
-                  id="speed-limit-up"
-                  type="number"
-                  bind:value={tempSettings['speed-limit-up']}
-                  min="0"
-                  class="border-ColorPalette-border-primary focus:border-ColorPalette-input-ring-focus-primary focus:ring-ColorPalette-input-ring-focus-primary bg-ColorPalette-bg-tertiary text-ColorPalette-text-tertiary focus:text-ColorPalette-text-primary w-full rounded-md border p-1.5 text-xs focus:ring-2 focus:outline-none"
-                />
-              </div>
-            </div>
-          {:else if activeTab === 'queue'}
-            <!-- Queue limits -->
-            <div class="text-ColorPalette-text-secondary grid grid-cols-2 gap-6">
-              <div>
-                <label
-                  for="queue-stalled-minutes"
-                  class="text-ColorPalette-text-secondary mb-2 block text-sm font-medium"
-                  >Max Active Torrents</label
-                >
-                <input
-                  id="queue-stalled-minutes"
-                  type="number"
-                  bind:value={tempSettings['queue-stalled-minutes']}
-                  min="0"
-                  class="border-ColorPalette-border-primary focus:border-ColorPalette-input-ring-focus-primary focus:ring-ColorPalette-input-ring-focus-primary bg-ColorPalette-bg-tertiary text-ColorPalette-text-tertiary focus:text-ColorPalette-text-primary w-full rounded-md border p-1.5 text-xs focus:ring-2 focus:outline-none"
-                />
-              </div>
-              <!-- Add more: 'max-active-downloads', 'queue-enabled', etc. -->
-            </div>
-          {:else if activeTab === 'ports'}
-            <!-- Peer port, DHT, etc. -->
-            <div class="text-ColorPalette-text-secondary">
-              <label
-                >Peer Port: <input
-                  type="number"
-                  bind:value={tempSettings['peer-port']}
-                  class="border-ColorPalette-border-primary focus:border-ColorPalette-input-ring-focus-primary focus:ring-ColorPalette-input-ring-focus-primary bg-ColorPalette-bg-tertiary text-ColorPalette-text-tertiary focus:text-ColorPalette-text-primary ml-2 w-24 rounded-md border p-1.5 text-xs focus:ring-2 focus:outline-none"
-                /></label
-              >
-              <!-- Toggles: dht-enabled, pex-enabled, utp-enabled -->
-            </div>
-          {:else if activeTab === 'remote'}
-            <!-- RPC whitelist, auth -->
-            <div class="text-ColorPalette-text-secondary">
-              <label
-                >RPC Whitelist: <input
-                  type="text"
-                  bind:value={tempSettings['rpc-whitelist']}
-                  class="border-ColorPalette-border-primary focus:border-ColorPalette-input-ring-focus-primary focus:ring-ColorPalette-input-ring-focus-primary bg-ColorPalette-bg-tertiary text-ColorPalette-text-tertiary focus:text-ColorPalette-text-primary w-full rounded-md border p-1.5 text-xs focus:ring-2 focus:outline-none"
-                /></label
-              >
-            </div>
-          {:else if activeTab === 'disk'}
-            <!-- Cache, incomplete-dir-enabled -->
-            <div class="text-ColorPalette-text-secondary">
-              <label
-                >Disk Cache (MiB): <input
-                  type="number"
-                  bind:value={tempSettings['cache-size-mb']}
-                  class="border-ColorPalette-border-primary focus:border-ColorPalette-input-ring-focus-primary focus:ring-ColorPalette-input-ring-focus-primary bg-ColorPalette-bg-tertiary text-ColorPalette-text-tertiary focus:text-ColorPalette-text-primary ml-2 w-24 rounded-md border p-1.5 text-xs focus:ring-2 focus:outline-none"
-                /></label
-              >
-            </div>
-          {/if}
-        </div>
-        <!-- Sticky Footer: Save/Reset -->
-        <div
-          class="border-ColorPalette-border-tertiary/50 bg-ColorPalette-bg-quaternary/95 sticky bottom-0 z-10 flex justify-end space-x-3 rounded-b-3xl border-t p-6 backdrop-blur-md"
-        >
-          <button
-            onclick={() => (tempSettings = { ...$session })}
-            class="bg-ColorPalette-bg-quinary hover:bg-ColorPalette-button-bg-hover-tertiary text-ColorPalette-text-quinary hover:text-ColorPalette-modal-tab-text-hover-secondary rounded-md px-6 py-2 text-sm transition-colors"
-            >Reset</button
-          >
-          <SaveButton {saveStatus} onclick={saveSettings} />
-          {#if saveStatus === 'error'}
-            <div class="flex items-center rounded-xl bg-red-100 px-4 py-2 text-sm text-red-800">
-              Save failed (check console)
-            </div>
-          {/if}
-        </div>
-      </div>
-    </div>
-  {/if}
+
+  <!-- Settings Modal (always mounted so theme effects run at app start) -->
+  <SettingsModal bind:open={settingsOpen} />
 </div>
 
 <style>

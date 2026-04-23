@@ -17,6 +17,7 @@ export {
     layoutMinWidth,
     refreshSession,
     updateSession,
+    updateBlocklist,
     currentTorrent,
     refreshTorrent,
     setFilePriorities
