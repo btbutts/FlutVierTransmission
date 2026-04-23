@@ -2,10 +2,10 @@
 <script lang="ts">
 import { onMount } from 'svelte';
 import { browser } from '$app/environment';
-import { refreshSession, session, updateBlocklist, updateSession } from '$lib';
+import { callRpc, refreshSession, session, updateBlocklist, updateSession } from '$lib';
 
 import { windowPopUp } from '$lib/helpers';
-import { Close } from '$lib/plugins';
+import { Close, LanCheck, LanDisconnect, Wan } from '$lib/plugins';
 
 import DDSelector from './DDSelector.svelte';
 import SaveButton from './SaveButton.svelte';
@@ -88,6 +88,51 @@ function toggleDay(bit: number) {
 let blocklistStatus = $state<'idle' | 'loading' | 'success' | 'error'>('idle');
 let blocklistError = $state('');
 
+// ── Port test state ───────────────────────────────────────────────────────────
+let portTestState = $state<'idle' | 'open' | 'closed'>('idle');
+let portTestTimer: ReturnType<typeof setTimeout> | null = null;
+let lastTestedPort: unknown = undefined;
+
+// Reset the port test indicator whenever the user edits the peer-port value
+$effect(() => {
+  const currentPort = tempSettings['peer-port'];
+  if (portTestState !== 'idle' && currentPort !== lastTestedPort) {
+    portTestState = 'idle';
+    if (portTestTimer !== null) {
+      clearTimeout(portTestTimer);
+      portTestTimer = null;
+    }
+  }
+});
+
+async function testPort() {
+  lastTestedPort = tempSettings['peer-port'];
+  if (portTestTimer !== null) {
+    clearTimeout(portTestTimer);
+    portTestTimer = null;
+  }
+  try {
+    // If the form port differs from the server's current port, save only that
+    // key first so the test reflects what the user has entered — without
+    // persisting any other in-progress changes from the rest of the modal.
+    if (tempSettings['peer-port'] !== $session['peer-port']) {
+      await updateSession({ 'peer-port': tempSettings['peer-port'] });
+    }
+    const result = await callRpc<{ 'port-is-open': boolean }>('port-test');
+    if (result['port-is-open']) {
+      portTestState = 'open';
+    } else {
+      portTestState = 'closed';
+      portTestTimer = setTimeout(() => {
+        portTestState = 'idle';
+        portTestTimer = null;
+      }, 8000);
+    }
+  } catch {
+    portTestState = 'idle';
+  }
+}
+
 async function handleBlocklistUpdate() {
   blocklistStatus = 'loading';
   blocklistError = '';
@@ -136,6 +181,11 @@ function closeSettings() {
   open = false;
   tempSettings = {};
   saveStatus = 'idle';
+  portTestState = 'idle';
+  if (portTestTimer !== null) {
+    clearTimeout(portTestTimer);
+    portTestTimer = null;
+  }
 }
 
 function resetSettings() {
@@ -576,62 +626,126 @@ $effect(() => {
 
           <!-- ══ QUEUE TAB ════════════════════════════════════════════════════ -->
         {:else if activeTab === 'queue'}
-          <div class="text-ColorPalette-text-secondary space-y-6">
-            <!-- Active Torrents -->
-            <div>
-              <div class="text-ColorPalette-text-secondary mb-3 text-sm font-semibold">
-                Active Torrents
+          <div class="text-ColorPalette-text-secondary">
+            <div class="grid grid-cols-2 gap-4">
+              <!-- Active Torrents (left column) -->
+              <div class="space-y-3">
+                <div class="text-ColorPalette-text-secondary mb-3 text-sm font-semibold">
+                  Active Torrents
+                </div>
+                <!-- Download queue limit -->
+                <div class="space-y-2">
+                  <label class="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(tempSettings['download-queue-enabled'])}
+                      onchange={(e) => {
+                        tempSettings = {
+                          ...tempSettings,
+                          'download-queue-enabled': (e.currentTarget as HTMLInputElement).checked
+                        };
+                      }}
+                      class="text-ColorPalette-modal-TxtAccent-secondary h-4 w-4 rounded border-gray-300 focus:ring-blue-500 focus:outline-none"
+                    />
+                    <span class="text-ColorPalette-text-secondary text-sm font-medium"
+                      >Set torrent download limit</span
+                    >
+                  </label>
+                  {#if tempSettings['download-queue-enabled']}
+                    <div class="flex items-center gap-2 pr-2 pl-7">
+                      <label
+                        for="download-queue-size"
+                        class="text-ColorPalette-text-secondary flex-1 text-sm font-medium"
+                        >Max Active Torrents</label
+                      >
+                      <input
+                        id="download-queue-size"
+                        type="number"
+                        bind:value={tempSettings['download-queue-size']}
+                        min="0"
+                        class="border-ColorPalette-border-primary focus:border-ColorPalette-input-ring-focus-primary focus:ring-ColorPalette-input-ring-focus-primary bg-ColorPalette-bg-tertiary text-ColorPalette-text-tertiary focus:text-ColorPalette-text-primary w-24 flex-shrink-0 rounded-md border p-1.5 text-xs focus:ring-2 focus:outline-none"
+                      />
+                    </div>
+                  {/if}
+                </div>
+                <!-- Seed queue limit -->
+                <div class="space-y-2">
+                  <label class="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(tempSettings['seed-queue-enabled'])}
+                      onchange={(e) => {
+                        tempSettings = {
+                          ...tempSettings,
+                          'seed-queue-enabled': (e.currentTarget as HTMLInputElement).checked
+                        };
+                      }}
+                      class="text-ColorPalette-modal-TxtAccent-secondary h-4 w-4 rounded border-gray-300 focus:ring-blue-500 focus:outline-none"
+                    />
+                    <span class="text-ColorPalette-text-secondary text-sm font-medium"
+                      >Set torrent seed limit</span
+                    >
+                  </label>
+                  {#if tempSettings['seed-queue-enabled']}
+                    <div class="flex items-center gap-2 pr-2 pl-7">
+                      <label
+                        for="seed-queue-size"
+                        class="text-ColorPalette-text-secondary flex-1 text-sm font-medium"
+                        >Max Active Seeds</label
+                      >
+                      <input
+                        id="seed-queue-size"
+                        type="number"
+                        bind:value={tempSettings['seed-queue-size']}
+                        min="0"
+                        class="border-ColorPalette-border-primary focus:border-ColorPalette-input-ring-focus-primary focus:ring-ColorPalette-input-ring-focus-primary bg-ColorPalette-bg-tertiary text-ColorPalette-text-tertiary focus:text-ColorPalette-text-primary w-24 flex-shrink-0 rounded-md border p-1.5 text-xs focus:ring-2 focus:outline-none"
+                      />
+                    </div>
+                  {/if}
+                </div>
+                <!-- Stalled torrent threshold -->
+                <div class="space-y-2">
+                  <label class="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(tempSettings['queue-stalled-enabled'])}
+                      onchange={(e) => {
+                        tempSettings = {
+                          ...tempSettings,
+                          'queue-stalled-enabled': (e.currentTarget as HTMLInputElement).checked
+                        };
+                      }}
+                      class="text-ColorPalette-modal-TxtAccent-secondary h-4 w-4 rounded border-gray-300 focus:ring-blue-500 focus:outline-none"
+                    />
+                    <span class="text-ColorPalette-text-secondary text-sm font-medium"
+                      >Consider idle queued torrents as stalled</span
+                    >
+                  </label>
+                  {#if tempSettings['queue-stalled-enabled']}
+                    <div class="flex items-center gap-2 pr-2 pl-7">
+                      <label
+                        for="queue-stalled-minutes"
+                        class="text-ColorPalette-text-secondary flex-1 text-sm leading-snug font-medium"
+                        >Minutes elapsed before<br />queued torrent is stalled</label
+                      >
+                      <input
+                        id="queue-stalled-minutes"
+                        type="number"
+                        bind:value={tempSettings['queue-stalled-minutes']}
+                        min="0"
+                        placeholder="60"
+                        class="border-ColorPalette-border-primary focus:border-ColorPalette-input-ring-focus-primary focus:ring-ColorPalette-input-ring-focus-primary bg-ColorPalette-bg-tertiary text-ColorPalette-text-tertiary focus:text-ColorPalette-text-primary w-24 flex-shrink-0 rounded-md border p-1.5 text-xs focus:ring-2 focus:outline-none"
+                      />
+                    </div>
+                  {/if}
+                </div>
               </div>
-              <div class="grid grid-cols-2 gap-4">
-                <div>
-                  <label
-                    for="download-queue-size"
-                    class="text-ColorPalette-text-secondary mb-1 block text-sm font-medium"
-                    >Max Active Torrents</label
-                  >
-                  <input
-                    id="download-queue-size"
-                    type="number"
-                    bind:value={tempSettings['download-queue-size']}
-                    min="0"
-                    class="border-ColorPalette-border-primary focus:border-ColorPalette-input-ring-focus-primary focus:ring-ColorPalette-input-ring-focus-primary bg-ColorPalette-bg-tertiary text-ColorPalette-text-tertiary focus:text-ColorPalette-text-primary w-full rounded-md border p-1.5 text-xs focus:ring-2 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label
-                    for="seed-queue-size"
-                    class="text-ColorPalette-text-secondary mb-1 block text-sm font-medium"
-                    >Max Active Seeds</label
-                  >
-                  <input
-                    id="seed-queue-size"
-                    type="number"
-                    bind:value={tempSettings['seed-queue-size']}
-                    min="0"
-                    class="border-ColorPalette-border-primary focus:border-ColorPalette-input-ring-focus-primary focus:ring-ColorPalette-input-ring-focus-primary bg-ColorPalette-bg-tertiary text-ColorPalette-text-tertiary focus:text-ColorPalette-text-primary w-full rounded-md border p-1.5 text-xs focus:ring-2 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label
-                    for="queue-stalled-minutes"
-                    class="text-ColorPalette-text-secondary mb-1 block text-sm font-medium"
-                    >Consider Inactive After (min)</label
-                  >
-                  <input
-                    id="queue-stalled-minutes"
-                    type="number"
-                    bind:value={tempSettings['queue-stalled-minutes']}
-                    min="0"
-                    class="border-ColorPalette-border-primary focus:border-ColorPalette-input-ring-focus-primary focus:ring-ColorPalette-input-ring-focus-primary bg-ColorPalette-bg-tertiary text-ColorPalette-text-tertiary focus:text-ColorPalette-text-primary w-full rounded-md border p-1.5 text-xs focus:ring-2 focus:outline-none"
-                  />
-                </div>
-              </div>
-            </div>
 
-            <!-- Seeding -->
-            <div>
-              <div class="text-ColorPalette-text-secondary mb-3 text-sm font-semibold">Seeding</div>
+              <!-- Seeding Torrents (right column) -->
               <div class="space-y-4">
+                <div class="text-ColorPalette-text-secondary mb-3 text-sm font-semibold">
+                  Seeding Torrents
+                </div>
                 <!-- Stop at ratio -->
                 <div>
                   <label class="mb-1 flex items-center gap-3">
@@ -647,7 +761,7 @@ $effect(() => {
                       class="text-ColorPalette-modal-TxtAccent-secondary h-4 w-4 rounded border-gray-300 focus:ring-blue-500 focus:outline-none"
                     />
                     <span class="text-ColorPalette-text-secondary text-sm font-medium"
-                      >Stop seeding at ratio</span
+                      >Stop seeding at ratio...</span
                     >
                   </label>
                   {#if tempSettings['seedRatioLimited']}
@@ -658,7 +772,7 @@ $effect(() => {
                         min="0"
                         bind:value={tempSettings['seedRatioLimit']}
                         placeholder="2.0"
-                        class="border-ColorPalette-border-primary focus:border-ColorPalette-input-ring-focus-primary focus:ring-ColorPalette-input-ring-focus-primary bg-ColorPalette-bg-tertiary text-ColorPalette-text-tertiary focus:text-ColorPalette-text-primary w-32 rounded-md border p-1.5 text-xs focus:ring-2 focus:outline-none"
+                        class="border-ColorPalette-border-primary focus:border-ColorPalette-input-ring-focus-primary focus:ring-ColorPalette-input-ring-focus-primary bg-ColorPalette-bg-tertiary text-ColorPalette-text-tertiary focus:text-ColorPalette-text-primary w-24 rounded-md border p-1.5 text-xs focus:ring-2 focus:outline-none"
                       />
                     </div>
                   {/if}
@@ -679,7 +793,7 @@ $effect(() => {
                       class="text-ColorPalette-modal-TxtAccent-secondary h-4 w-4 rounded border-gray-300 focus:ring-blue-500 focus:outline-none"
                     />
                     <span class="text-ColorPalette-text-secondary text-sm font-medium"
-                      >Stop seeding if idle for</span
+                      >Stop seeding if idle for...</span
                     >
                   </label>
                   {#if tempSettings['idle-seeding-limit-enabled']}
@@ -691,7 +805,7 @@ $effect(() => {
                         placeholder="30"
                         class="border-ColorPalette-border-primary focus:border-ColorPalette-input-ring-focus-primary focus:ring-ColorPalette-input-ring-focus-primary bg-ColorPalette-bg-tertiary text-ColorPalette-text-tertiary focus:text-ColorPalette-text-primary w-24 rounded-md border p-1.5 text-xs focus:ring-2 focus:outline-none"
                       />
-                      <span class="text-ColorPalette-text-secondary text-xs">minutes</span>
+                      <span class="text-ColorPalette-text-secondary text-sm">minutes</span>
                     </div>
                   {/if}
                 </div>
@@ -714,6 +828,20 @@ $effect(() => {
                 max="65535"
                 class="border-ColorPalette-border-primary focus:border-ColorPalette-input-ring-focus-primary focus:ring-ColorPalette-input-ring-focus-primary bg-ColorPalette-bg-tertiary text-ColorPalette-text-tertiary focus:text-ColorPalette-text-primary w-28 rounded-md border p-1.5 text-xs focus:ring-2 focus:outline-none"
               />
+              <button
+                type="button"
+                onclick={testPort}
+                title="Check Transmission Server Peer Port Connectivity"
+                class="rounded-md bg-gray-700/90 p-[7px] transition-colors hover:bg-gray-600 focus:outline-none active:bg-gray-800"
+              >
+                {#if portTestState === 'open'}
+                  <Wan class="h-4 w-4 text-green-600" />
+                {:else if portTestState === 'closed'}
+                  <LanDisconnect class="h-4 w-4 text-red-600" />
+                {:else}
+                  <LanCheck class="h-4 w-4 text-white/70" />
+                {/if}
+              </button>
             </div>
             <label class="flex items-center gap-3">
               <input
