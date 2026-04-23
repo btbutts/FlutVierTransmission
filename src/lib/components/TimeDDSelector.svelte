@@ -1,6 +1,6 @@
 <!-- src/lib/components/TimeDDSelector.svelte -->
 <script lang="ts">
-import { tick } from 'svelte';
+import { tick, untrack } from 'svelte';
 
 import { Check, TimerEdit } from '$lib/plugins';
 
@@ -39,10 +39,10 @@ let dropdownOpen = $state(false);
 let pendingHours = $state(initial.h ?? 9);
 let pendingMinutes = $state(initial.m ?? 0);
 
-// rootRef: outer container — used for outside-click detection.
+// rootRef: outer wrapper — used for outside-click detection and onblur checks.
 // inputRef: styled input box — used for dropdown positioning.
 let rootRef = $state<HTMLDivElement | null>(null);
-let inputRef = $state<HTMLDivElement | null>(null);
+let inputRef = $state<HTMLLabelElement | null>(null);
 let hoursButtonRef = $state<HTMLButtonElement | null>(null);
 let minutesButtonRef = $state<HTMLButtonElement | null>(null);
 let dropdownRef = $state<HTMLDivElement | null>(null);
@@ -54,7 +54,7 @@ const displayHours = $derived(hours === null ? '--' : String(hours).padStart(2, 
 const displayMinutes = $derived(minutes === null ? '--' : String(minutes).padStart(2, '0'));
 const isInvalid = $derived(hours === null || minutes === null);
 
-// Show partial digit in the active segment while the user is mid-entry
+// While the user is mid-entry, show the partial digit with a trailing placeholder
 const hoursText = $derived(
   activeSegment === 'hours' && partialInput ? partialInput.padEnd(2, '_') : displayHours
 );
@@ -62,41 +62,66 @@ const minutesText = $derived(
   activeSegment === 'minutes' && partialInput ? partialInput.padEnd(2, '_') : displayMinutes
 );
 
-// Sync value prop → internal state (skip while actively editing or dropdown is open)
+// ── Sync: internal state → value prop ────────────────────────────────────────
+// Tracked deps: hours, minutes, partialInput
+// value is read with untrack so a parent writing value does NOT re-trigger this,
+// preventing the circular-reversion bug.
 $effect(() => {
-  if (partialInput !== '' || dropdownOpen) return;
-  const parsed = parseTime(value);
-  if (parsed.h !== null && parsed.m !== null) {
-    if (hours !== parsed.h) hours = parsed.h;
-    if (minutes !== parsed.m) minutes = parsed.m;
-  }
-});
-
-// Sync internal state → value prop and emit onChange
-$effect(() => {
-  if (hours !== null && minutes !== null) {
-    const newVal = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-    if (newVal !== value) {
+  const h = hours;
+  const m = minutes;
+  const pi = partialInput;
+  if (h !== null && m !== null && !pi) {
+    const newVal = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+    if (newVal !== untrack(() => value)) {
       value = newVal;
       onChange(newVal);
     }
   }
 });
 
-/**
- * Called from onfocus on each segment button.
- * No parameters needed — the button's native focus handles the event.
- */
+// ── Sync: value prop → internal state ────────────────────────────────────────
+// Tracked deps: value only — everything else is untracked so hours/minutes
+// writes from the internal-→-external effect above cannot cause a re-run loop.
+$effect(() => {
+  const externalVal = value; // tracked
+  untrack(() => {
+    // Skip while the user is actively editing or the dropdown is open
+    if (partialInput !== '' || dropdownOpen) return;
+    // Skip if the incoming value is already what we would compute (our own write)
+    const computed =
+      hours !== null && minutes !== null
+        ? `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+        : null;
+    if (externalVal === computed) return;
+    // Genuine external change — sync internal state
+    const parsed = parseTime(externalVal);
+    if (parsed.h !== null && parsed.m !== null) {
+      hours = parsed.h;
+      minutes = parsed.m;
+    }
+  });
+});
+
+// ── Segment focus / blur ──────────────────────────────────────────────────────
+
 function selectSegment(segment: 'hours' | 'minutes') {
   activeSegment = segment;
   partialInput = '';
 }
 
 /**
- * Keyboard handler attached to each segment <button>.
- * Navigation between segments is done by programmatically focusing the other button,
- * which naturally fires its onfocus → selectSegment call.
+ * Clear the active segment only when focus truly leaves the component
+ * (not when it moves between internal buttons or into the portaled dropdown).
  */
+function handleSegmentBlur(e: FocusEvent) {
+  const next = e.relatedTarget as HTMLElement | null;
+  if (!rootRef?.contains(next) && !dropdownRef?.contains(next)) {
+    activeSegment = null;
+    partialInput = '';
+  }
+}
+
+// ── Keyboard handler for the segment buttons ──────────────────────────────────
 function handleSegmentKeydown(e: KeyboardEvent) {
   if (!activeSegment) return;
 
@@ -108,15 +133,17 @@ function handleSegmentKeydown(e: KeyboardEvent) {
     return;
   }
 
+  // ArrowRight or colon → advance to minutes
   if ((e.key === ':' || e.key === 'ArrowRight') && activeSegment === 'hours') {
     e.preventDefault();
-    minutesButtonRef?.focus(); // onfocus on minutes button → selectSegment('minutes')
+    minutesButtonRef?.focus(); // onfocus → selectSegment('minutes')
     return;
   }
 
+  // ArrowLeft → retreat to hours
   if (e.key === 'ArrowLeft' && activeSegment === 'minutes') {
     e.preventDefault();
-    hoursButtonRef?.focus(); // onfocus on hours button → selectSegment('hours')
+    hoursButtonRef?.focus(); // onfocus → selectSegment('hours')
     return;
   }
 
@@ -126,7 +153,7 @@ function handleSegmentKeydown(e: KeyboardEvent) {
 
   if (activeSegment === 'hours') {
     if (partialInput === '') {
-      // First digit 3–9: single-digit hour, advance immediately to minutes
+      // First digit 3–9: valid as a single-digit hour; advance to minutes
       if (digit >= 3) {
         hours = digit;
         partialInput = '';
@@ -141,7 +168,7 @@ function handleSegmentKeydown(e: KeyboardEvent) {
         partialInput = '';
         minutesButtonRef?.focus();
       } else {
-        // Invalid combination — restart with the new digit
+        // Invalid combo — restart with the new digit
         if (digit >= 3) {
           hours = digit;
           partialInput = '';
@@ -153,11 +180,11 @@ function handleSegmentKeydown(e: KeyboardEvent) {
     }
   } else if (activeSegment === 'minutes') {
     if (partialInput === '') {
-      // First digit 6–9: single-digit minutes, complete entry; keep focus here
+      // First digit 6–9: valid as a single-digit minute; stay on minutes
       if (digit >= 6) {
         minutes = digit;
         partialInput = '';
-        // activeSegment stays 'minutes'; user can continue editing
+        // Keep activeSegment = 'minutes' so the user can continue editing
       } else {
         partialInput = e.key;
       }
@@ -166,7 +193,6 @@ function handleSegmentKeydown(e: KeyboardEvent) {
       if (combined >= 0 && combined <= 59) {
         minutes = combined;
         partialInput = '';
-        // activeSegment stays 'minutes'; user can continue editing
       } else {
         if (digit >= 6) {
           minutes = digit;
@@ -179,10 +205,11 @@ function handleSegmentKeydown(e: KeyboardEvent) {
   }
 }
 
+// ── Dropdown ──────────────────────────────────────────────────────────────────
 function updateMenuPosition() {
   if (!inputRef) return;
   const rect = inputRef.getBoundingClientRect();
-  // Top of dropdown aligns with top of input box, same positioning as DDSelector
+  // Top of dropdown aligns with top of input box — same as DDSelector
   menuStyle = `top: ${rect.top}px; left: ${rect.left}px;`;
 }
 
@@ -195,7 +222,7 @@ function openDropdown() {
   void tick().then(() => {
     updateMenuPosition();
     scrollToSelected();
-    dropdownRef?.focus(); // Focus the listbox so it can receive Enter/Escape
+    dropdownRef?.focus(); // Focus the listbox so it receives Enter/Escape
   });
 }
 
@@ -242,7 +269,7 @@ $effect(() => {
   return () => document.removeEventListener('click', handler);
 });
 
-// Keep dropdown positioned over trigger
+// Keep dropdown positioned over trigger on resize/scroll
 $effect(() => {
   if (!dropdownOpen) return;
   updateMenuPosition();
@@ -258,46 +285,64 @@ $effect(() => {
 
 <div bind:this={rootRef} class="relative {classOverride}">
   <!--
-    Visual input container — styled to look like a form field.
-    It is a pure layout div with no interaction of its own.
-    focus-within: utilities provide the ring/border when any child button is focused.
+    Visual input container — pure layout div, no interaction of its own.
+    focus-within: utilities show the ring/border whenever any child button is focused,
+    matching the appearance of the other form inputs throughout the settings modal.
   -->
-  <div
+  <!--
+    label (no `for`) wraps all children. Clicking anywhere in the box that isn't
+    an interactive descendant (minutes button, timer icon) forwards the click to
+    the first labelable descendant — the hours button — giving "click anywhere to
+    focus hours" for free via HTML semantics. No JS needed, no a11y issues.
+  -->
+  <label
     bind:this={inputRef}
     class="border-ColorPalette-border-primary focus-within:border-ColorPalette-input-ring-focus-primary focus-within:ring-ColorPalette-input-ring-focus-primary bg-ColorPalette-bg-tertiary flex cursor-text items-center rounded-md border p-1.5 text-xs focus-within:ring-2 focus-within:outline-none"
   >
+    <!--
+      Hours segment — a native <button> so focus, keyboard, and a11y all work
+      without any overrides. onfocus drives selectSegment (works for both click
+      and Tab). onclick is an additional guard for the case where the button is
+      already focused (click does not re-fire onfocus in that case).
+    -->
     <button
       type="button"
       bind:this={hoursButtonRef}
       onfocus={() => selectSegment('hours')}
+      onclick={() => selectSegment('hours')}
+      onblur={handleSegmentBlur}
       onkeydown={handleSegmentKeydown}
-      class="appearance-none rounded border-0 bg-transparent px-0.5 font-mono transition-colors select-none focus:outline-none
-        {activeSegment === 'hours' ? 'bg-blue-500 text-white' : 'text-ColorPalette-text-primary'}"
+      class="appearance-none rounded border-0 px-0.5 font-mono select-none focus:outline-none
+        {activeSegment === 'hours'
+        ? 'bg-blue-500 text-white'
+        : 'text-ColorPalette-text-primary bg-transparent'}"
       aria-label="Hours">{hoursText}</button
     >
 
-    <!-- Static colon separator -->
+    <!-- Static colon separator — never interactive (inside label: clicking it forwards to hours) -->
     <span class="text-ColorPalette-text-tertiary select-none">:</span>
 
-    <!--
-      Minutes segment — identical treatment to the hours button above.
-    -->
+    <!-- Minutes segment — identical treatment to hours button above -->
     <button
       type="button"
       bind:this={minutesButtonRef}
       onfocus={() => selectSegment('minutes')}
+      onclick={() => selectSegment('minutes')}
+      onblur={handleSegmentBlur}
       onkeydown={handleSegmentKeydown}
-      class="appearance-none rounded border-0 bg-transparent px-0.5 font-mono transition-colors select-none focus:outline-none
-        {activeSegment === 'minutes' ? 'bg-blue-500 text-white' : 'text-ColorPalette-text-primary'}"
+      class="appearance-none rounded border-0 px-0.5 font-mono select-none focus:outline-none
+        {activeSegment === 'minutes'
+        ? 'bg-blue-500 text-white'
+        : 'text-ColorPalette-text-primary bg-transparent'}"
       aria-label="Minutes">{minutesText}</button
     >
 
-    <!-- Spacer pushes icon to the right -->
+    <!-- Spacer — clicking it (inside label) forwards to hours button -->
     <span class="flex-1"></span>
 
     <!--
-      TimerEdit / Check icon — handles both click (mouse) and
-      Enter/Space (keyboard) natively.
+      TimerEdit / Check icon button. onclick handles both mouse-click and
+      Enter/Space keyboard activation natively. onkeydown adds Escape support.
     -->
     <button
       type="button"
@@ -320,14 +365,14 @@ $effect(() => {
         <TimerEdit class="h-3.5 w-3.5" />
       {/if}
     </button>
-  </div>
+  </label>
 
-  <!-- Invalid time warning — shown whenever either segment is blank -->
+  <!-- Invalid time warning — shown while either segment is blank -->
   {#if isInvalid}
     <div class="mt-1 text-xs text-amber-500">Enter a valid time (00:00 – 23:59)</div>
   {/if}
 
-  <!-- Dual-column time picker dropdown (portaled to body, same pattern as DDSelector) -->
+  <!-- Dual-column dropdown (portaled to body, same pattern as DDSelector) -->
   {#if dropdownOpen}
     <div
       use:menuPopUp
@@ -343,38 +388,44 @@ $effect(() => {
           closeDropdown();
         }
       }}
-      class="fixed z-[80] flex overflow-hidden rounded-md border border-gray-300/70 bg-white/95 shadow-2xl backdrop-blur-sm dark:border-gray-700/60 dark:bg-gray-800/90"
+      class="border-ColorPalette-border-tertiary/60 bg-ColorPalette-bg-secondary/70 fixed z-[80] flex rounded-md border shadow-2xl backdrop-blur-sm"
       style={menuStyle}
     >
       <!-- Hours column: 00–23 -->
-      <div bind:this={hoursListRef} class="max-h-48 w-12 overflow-y-auto py-1">
+      <div bind:this={hoursListRef} class="max-h-48 w-12 overflow-y-auto bg-transparent py-1">
         {#each Array.from({ length: 24 }, (_, i) => i) as h (h)}
           <button
             type="button"
             onclick={() => {
               pendingHours = h;
             }}
-            class="w-full px-2 py-1 text-center text-xs transition-colors hover:bg-gray-100/40 dark:hover:bg-gray-700/30
+            class="hover:bg-ColorPalette-bg-tertiary/40 w-full px-2 py-1 text-center text-xs transition-colors
               {pendingHours === h
-              ? 'bg-gray-100/40 font-medium text-blue-600 dark:bg-gray-700/30 dark:text-blue-400'
-              : 'text-gray-900 dark:text-gray-100'}">{String(h).padStart(2, '0')}</button
+              ? 'bg-ColorPalette-bg-tertiary/40 font-medium text-blue-600 dark:text-blue-400'
+              : 'text-ColorPalette-text-primary bg-transparent'}"
+            >{String(h).padStart(2, '0')}</button
           >
         {/each}
       </div>
       <!-- Column separator -->
-      <div class="flex items-center px-1 text-xs font-bold text-gray-400 dark:text-gray-500">:</div>
+      <div
+        class="flex items-center bg-transparent px-1 text-xs font-bold text-gray-400 dark:text-gray-500"
+      >
+        :
+      </div>
       <!-- Minutes column: 00–59 -->
-      <div bind:this={minutesListRef} class="max-h-48 w-12 overflow-y-auto py-1">
+      <div bind:this={minutesListRef} class="max-h-48 w-12 overflow-y-auto bg-transparent py-1">
         {#each Array.from({ length: 60 }, (_, i) => i) as m (m)}
           <button
             type="button"
             onclick={() => {
               pendingMinutes = m;
             }}
-            class="w-full px-2 py-1 text-center text-xs transition-colors hover:bg-gray-100/40 dark:hover:bg-gray-700/30
+            class="hover:bg-ColorPalette-bg-tertiary/40 w-full px-2 py-1 text-center text-xs transition-colors
               {pendingMinutes === m
-              ? 'bg-gray-100/40 font-medium text-blue-600 dark:bg-gray-700/30 dark:text-blue-400'
-              : 'text-gray-900 dark:text-gray-100'}">{String(m).padStart(2, '0')}</button
+              ? 'bg-ColorPalette-bg-tertiary/40 font-medium text-blue-600 dark:text-blue-400'
+              : 'text-ColorPalette-text-primary bg-transparent'}"
+            >{String(m).padStart(2, '0')}</button
           >
         {/each}
       </div>

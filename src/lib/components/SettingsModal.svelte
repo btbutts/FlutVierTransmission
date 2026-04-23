@@ -473,36 +473,38 @@ $effect(() => {
                     >Enable alternative speed limits</span
                   >
                 </label>
-                <div class="grid grid-cols-2 gap-4">
-                  <div>
-                    <label
-                      for="alt-speed-down"
-                      class="text-ColorPalette-text-secondary mb-1 block text-sm font-medium"
-                      >Alt Download (KiB/s)</label
-                    >
-                    <input
-                      id="alt-speed-down"
-                      type="number"
-                      bind:value={tempSettings['alt-speed-down']}
-                      min="0"
-                      class="border-ColorPalette-border-primary focus:border-ColorPalette-input-ring-focus-primary focus:ring-ColorPalette-input-ring-focus-primary bg-ColorPalette-bg-tertiary text-ColorPalette-text-tertiary focus:text-ColorPalette-text-primary w-full rounded-md border p-1.5 text-xs focus:ring-2 focus:outline-none"
-                    />
+                {#if tempSettings['alt-speed-enabled']}
+                  <div class="grid grid-cols-2 gap-4">
+                    <div>
+                      <label
+                        for="alt-speed-down"
+                        class="text-ColorPalette-text-secondary mb-1 block text-sm font-medium"
+                        >Alt Download (KiB/s)</label
+                      >
+                      <input
+                        id="alt-speed-down"
+                        type="number"
+                        bind:value={tempSettings['alt-speed-down']}
+                        min="0"
+                        class="border-ColorPalette-border-primary focus:border-ColorPalette-input-ring-focus-primary focus:ring-ColorPalette-input-ring-focus-primary bg-ColorPalette-bg-tertiary text-ColorPalette-text-tertiary focus:text-ColorPalette-text-primary w-full rounded-md border p-1.5 text-xs focus:ring-2 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        for="alt-speed-up"
+                        class="text-ColorPalette-text-secondary mb-1 block text-sm font-medium"
+                        >Alt Upload (KiB/s)</label
+                      >
+                      <input
+                        id="alt-speed-up"
+                        type="number"
+                        bind:value={tempSettings['alt-speed-up']}
+                        min="0"
+                        class="border-ColorPalette-border-primary focus:border-ColorPalette-input-ring-focus-primary focus:ring-ColorPalette-input-ring-focus-primary bg-ColorPalette-bg-tertiary text-ColorPalette-text-tertiary focus:text-ColorPalette-text-primary w-full rounded-md border p-1.5 text-xs focus:ring-2 focus:outline-none"
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <label
-                      for="alt-speed-up"
-                      class="text-ColorPalette-text-secondary mb-1 block text-sm font-medium"
-                      >Alt Upload (KiB/s)</label
-                    >
-                    <input
-                      id="alt-speed-up"
-                      type="number"
-                      bind:value={tempSettings['alt-speed-up']}
-                      min="0"
-                      class="border-ColorPalette-border-primary focus:border-ColorPalette-input-ring-focus-primary focus:ring-ColorPalette-input-ring-focus-primary bg-ColorPalette-bg-tertiary text-ColorPalette-text-tertiary focus:text-ColorPalette-text-primary w-full rounded-md border p-1.5 text-xs focus:ring-2 focus:outline-none"
-                    />
-                  </div>
-                </div>
+                {/if}
               </div>
             </div>
 
