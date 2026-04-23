@@ -3,11 +3,13 @@
 import { onMount } from 'svelte';
 import { browser } from '$app/environment';
 import { refreshSession, session, updateBlocklist, updateSession } from '$lib';
+
 import { windowPopUp } from '$lib/helpers';
+import { Close } from '$lib/plugins';
+
 import DDSelector from './DDSelector.svelte';
 import SaveButton from './SaveButton.svelte';
 import TimeDDSelector from './TimeDDSelector.svelte';
-import { Close } from '$lib/plugins';
 
 interface Props {
   /** Controls modal visibility — bindable so parent can open/close */
@@ -217,7 +219,7 @@ $effect(() => {
     onkeydown={(event) => event.key === 'Escape' && closeSettings()}
   >
     <div
-      class="bg-ColorPalette-bg-secondary/95 ring-ColorPalette-modal-ring-secondary/50 mx-4 flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-3xl shadow-[0_0_0_1px_rgba(0,0,0,0.15),0_0_40px_16px_rgba(0,0,0,0.65),0_0_120px_60px_rgba(0,0,0,0.5)] ring-1 backdrop-blur-xl"
+      class="bg-ColorPalette-bg-secondary/95 ring-ColorPalette-modal-ring-secondary/50 mx-4 flex h-[630px] max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-3xl shadow-[0_0_0_1px_rgba(0,0,0,0.15),0_0_40px_16px_rgba(0,0,0,0.65),0_0_120px_60px_rgba(0,0,0,0.5)] ring-1 backdrop-blur-xl"
     >
       <!-- Sticky Header -->
       <div
@@ -241,9 +243,10 @@ $effect(() => {
           {#each settingsTabs as tab (tab.id)}
             <button
               onclick={() => (activeTab = tab.id)}
-              class="border-b-2 px-4 py-2 text-sm font-medium transition-colors {activeTab === tab.id
+              class="border-b-2 px-4 py-2 text-sm font-medium transition-colors {activeTab ===
+              tab.id
                 ? 'border-ColorPalette-modal-tab-selected-primary bg-ColorPalette-bg-secondary/50 text-ColorPalette-modal-tab-selected-primary'
-                : 'border-transparent text-ColorPalette-text-tertiary hover:bg-ColorPalette-bg-tertiary/70 hover:text-ColorPalette-modal-tab-text-hover-secondary'}"
+                : 'text-ColorPalette-text-tertiary hover:bg-ColorPalette-bg-tertiary/70 hover:text-ColorPalette-modal-tab-text-hover-secondary border-transparent'}"
             >
               {tab.label}
             </button>
@@ -253,15 +256,15 @@ $effect(() => {
 
       <!-- Scrollable Content -->
       <div class="min-h-0 flex-1 overflow-y-auto p-6">
-
         <!-- ══ GENERAL TAB ══════════════════════════════════════════════════ -->
         {#if activeTab === 'general'}
           <div class="text-ColorPalette-text-secondary space-y-6">
-
             <!-- Theme & Encryption -->
             <div class="grid grid-cols-2 gap-4">
               <div>
-                <div class="text-ColorPalette-text-secondary mb-1 block text-sm font-medium">Theme</div>
+                <div class="text-ColorPalette-text-secondary mb-1 block text-sm font-medium">
+                  Theme
+                </div>
                 <DDSelector
                   value={themePreference}
                   options={themeOptions}
@@ -291,7 +294,8 @@ $effect(() => {
               <label
                 for="download-dir"
                 class="text-ColorPalette-text-secondary mb-1 block text-sm font-medium"
-              >Default Download Directory</label>
+                >Default Download Directory</label
+              >
               <input
                 id="download-dir"
                 type="text"
@@ -303,7 +307,9 @@ $effect(() => {
 
             <!-- Common Paths -->
             <div>
-              <div class="text-ColorPalette-text-secondary mb-2 text-sm font-medium">Common Paths</div>
+              <div class="text-ColorPalette-text-secondary mb-2 text-sm font-medium">
+                Common Paths
+              </div>
               {#if commonPaths.length > 0}
                 <div class="mb-2 space-y-1">
                   {#each commonPaths as path (path)}
@@ -314,15 +320,17 @@ $effect(() => {
                         title={path}
                         class="min-w-0 flex-1 truncate rounded px-2 py-1 text-left text-xs transition-colors
                           {tempSettings['download-dir'] === path
-                            ? 'bg-blue-600/20 text-blue-400 ring-1 ring-blue-500/40'
-                            : 'bg-ColorPalette-bg-tertiary text-ColorPalette-text-tertiary hover:bg-ColorPalette-bg-tertiary/70'}"
-                      >{path}</button>
+                          ? 'bg-blue-600/20 text-blue-400 ring-1 ring-blue-500/40'
+                          : 'bg-ColorPalette-bg-tertiary text-ColorPalette-text-tertiary hover:bg-ColorPalette-bg-tertiary/70'}"
+                        >{path}</button
+                      >
                       <button
                         type="button"
                         onclick={() => removeCommonPath(path)}
                         aria-label="Remove path"
-                        class="shrink-0 rounded p-1 text-xs text-ColorPalette-text-tertiary transition-colors hover:text-red-400"
-                      >✕</button>
+                        class="text-ColorPalette-text-tertiary shrink-0 rounded p-1 text-xs transition-colors hover:text-red-400"
+                        >✕</button
+                      >
                     </div>
                   {/each}
                 </div>
@@ -340,7 +348,8 @@ $effect(() => {
                   onclick={addCommonPath}
                   disabled={!newCommonPath.trim()}
                   class="shrink-0 rounded-md bg-blue-600 px-3 py-1.5 text-xs text-white shadow-sm transition-all hover:bg-blue-700 disabled:opacity-50"
-                >Add</button>
+                  >Add</button
+                >
               </div>
             </div>
 
@@ -407,13 +416,11 @@ $effect(() => {
                 >Delete .torrent file after adding to queue</span
               >
             </label>
-
           </div>
 
-        <!-- ══ SPEEDS TAB ═══════════════════════════════════════════════════ -->
+          <!-- ══ SPEEDS TAB ═══════════════════════════════════════════════════ -->
         {:else if activeTab === 'speeds'}
           <div class="text-ColorPalette-text-secondary space-y-6">
-
             <!-- Speed Limits -->
             <div>
               <div class="text-ColorPalette-text-secondary mb-3 text-sm font-semibold">
@@ -531,17 +538,23 @@ $effect(() => {
                   <!-- From / To time pickers -->
                   <div class="flex items-start gap-6">
                     <div>
-                      <div class="text-ColorPalette-text-secondary mb-1 text-xs font-medium">From</div>
+                      <div class="text-ColorPalette-text-secondary mb-1 text-xs font-medium">
+                        From
+                      </div>
                       <TimeDDSelector bind:value={altSpeedFrom} class="w-36" />
                     </div>
                     <div>
-                      <div class="text-ColorPalette-text-secondary mb-1 text-xs font-medium">To</div>
+                      <div class="text-ColorPalette-text-secondary mb-1 text-xs font-medium">
+                        To
+                      </div>
                       <TimeDDSelector bind:value={altSpeedTo} class="w-36" />
                     </div>
                   </div>
                   <!-- Days of week -->
                   <div>
-                    <div class="text-ColorPalette-text-secondary mb-2 text-xs font-medium">Days</div>
+                    <div class="text-ColorPalette-text-secondary mb-2 text-xs font-medium">
+                      Days
+                    </div>
                     <div class="flex flex-wrap gap-3">
                       {#each ALT_SPEED_DAYS as day (day.bit)}
                         <label class="flex cursor-pointer items-center gap-1.5">
@@ -559,13 +572,11 @@ $effect(() => {
                 </div>
               {/if}
             </div>
-
           </div>
 
-        <!-- ══ QUEUE TAB ════════════════════════════════════════════════════ -->
+          <!-- ══ QUEUE TAB ════════════════════════════════════════════════════ -->
         {:else if activeTab === 'queue'}
           <div class="text-ColorPalette-text-secondary space-y-6">
-
             <!-- Active Torrents -->
             <div>
               <div class="text-ColorPalette-text-secondary mb-3 text-sm font-semibold">
@@ -686,16 +697,13 @@ $effect(() => {
                 </div>
               </div>
             </div>
-
           </div>
 
-        <!-- ══ PORTS TAB ════════════════════════════════════════════════════ -->
+          <!-- ══ PORTS TAB ════════════════════════════════════════════════════ -->
         {:else if activeTab === 'ports'}
           <div class="text-ColorPalette-text-secondary space-y-4">
             <div class="flex items-center gap-4">
-              <label
-                for="peer-port"
-                class="text-ColorPalette-text-secondary text-sm font-medium"
+              <label for="peer-port" class="text-ColorPalette-text-secondary text-sm font-medium"
                 >Peer Port</label
               >
               <input
@@ -757,10 +765,9 @@ $effect(() => {
             </label>
           </div>
 
-        <!-- ══ REMOTE TAB ═══════════════════════════════════════════════════ -->
+          <!-- ══ REMOTE TAB ═══════════════════════════════════════════════════ -->
         {:else if activeTab === 'remote'}
           <div class="text-ColorPalette-text-secondary space-y-6">
-
             <!-- RPC -->
             <div>
               <label
@@ -872,7 +879,9 @@ $effect(() => {
 
             <!-- Blocklist -->
             <div>
-              <div class="text-ColorPalette-text-secondary mb-2 text-sm font-semibold">Blocklist</div>
+              <div class="text-ColorPalette-text-secondary mb-2 text-sm font-semibold">
+                Blocklist
+              </div>
               <div class="space-y-3">
                 <label class="flex items-center gap-3">
                   <input
@@ -921,14 +930,15 @@ $effect(() => {
                 {/if}
               </div>
             </div>
-
           </div>
 
-        <!-- ══ DISK TAB ═════════════════════════════════════════════════════ -->
+          <!-- ══ DISK TAB ═════════════════════════════════════════════════════ -->
         {:else if activeTab === 'disk'}
           <div class="text-ColorPalette-text-secondary">
             <label class="flex items-center gap-3">
-              <span class="text-ColorPalette-text-secondary text-sm font-medium">Disk Cache (MiB)</span>
+              <span class="text-ColorPalette-text-secondary text-sm font-medium"
+                >Disk Cache (MiB)</span
+              >
               <input
                 type="number"
                 bind:value={tempSettings['cache-size-mb']}
@@ -937,7 +947,6 @@ $effect(() => {
             </label>
           </div>
         {/if}
-
       </div>
 
       <!-- Sticky Footer -->
