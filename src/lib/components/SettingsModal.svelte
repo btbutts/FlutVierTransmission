@@ -2,9 +2,9 @@
 <script lang="ts">
 import { onMount } from 'svelte';
 import { browser } from '$app/environment';
-import { callRpc, refreshSession, session, updateBlocklist, updateSession } from '$lib';
+import { callRpc, refreshSession, session, torrents, updateBlocklist, updateSession } from '$lib';
 
-import { windowPopUp } from '$lib/helpers';
+import { getCompletedTorrentPaths, windowPopUp } from '$lib/helpers';
 import { Close, LanCheck, LanDisconnect, Wan } from '$lib/plugins';
 
 import DDSelector from './DDSelector.svelte';
@@ -218,6 +218,15 @@ function useCommonPath(path: string) {
   tempSettings = { ...tempSettings, 'download-dir': path };
 }
 
+function importTorrentPaths() {
+  const candidates = getCompletedTorrentPaths($torrents);
+  const toAdd = candidates.filter((p) => !commonPaths.includes(p));
+  if (toAdd.length > 0) {
+    commonPaths = [...commonPaths, ...toAdd];
+    saveCommonPathsToStorage();
+  }
+}
+
 // ── Theme ─────────────────────────────────────────────────────────────────────
 onMount(() => {
   if (!browser) return;
@@ -357,9 +366,16 @@ $effect(() => {
 
             <!-- Common Paths -->
             <div>
-              <div class="text-ColorPalette-text-secondary mb-2 text-sm font-medium">
+              <div class="text-ColorPalette-text-secondary mb-1 text-sm font-medium">
                 Common Paths
               </div>
+              <button
+                type="button"
+                onclick={importTorrentPaths}
+                class="text-ColorPalette-text-secondary hover:text-ColorPalette-input-ring-focus-primary mb-2 text-xs transition-colors"
+              >
+                Import paths from downloaded torrents
+              </button>
               {#if commonPaths.length > 0}
                 <div class="mb-2 space-y-1">
                   {#each commonPaths as path (path)}
@@ -368,19 +384,23 @@ $effect(() => {
                         type="button"
                         onclick={() => useCommonPath(path)}
                         title={path}
-                        class="min-w-0 flex-1 truncate rounded px-2 py-1 text-left text-xs transition-colors
+                        class="min-w-0 flex-1 truncate rounded-md px-2 py-1 text-left text-xs transition-colors
                           {tempSettings['download-dir'] === path
-                          ? 'bg-blue-600/20 text-blue-400 ring-1 ring-blue-500/40'
+                          ? 'bg-blue-600/20 text-blue-400 ring-1 ring-blue-500/40 ring-inset'
                           : 'bg-ColorPalette-bg-tertiary text-ColorPalette-text-tertiary hover:bg-ColorPalette-bg-tertiary/70'}"
                         >{path}</button
                       >
-                      <button
-                        type="button"
-                        onclick={() => removeCommonPath(path)}
-                        aria-label="Remove path"
-                        class="text-ColorPalette-text-tertiary shrink-0 rounded p-1 text-xs transition-colors hover:text-red-400"
-                        >✕</button
-                      >
+                      <!-- px-[9px] side padding is invisible — total column width matches Add button below -->
+                      <div class="flex shrink-0 items-center justify-center px-[11.5px]">
+                        <button
+                          type="button"
+                          onclick={() => removeCommonPath(path)}
+                          aria-label="Remove path"
+                          class="bg-ColorPalette-bg-quinary hover:bg-ColorPalette-button-bg-hover-tertiary text-ColorPalette-text-quinary flex h-6 w-6 items-center justify-center rounded-md transition-colors hover:text-red-600"
+                        >
+                          <Close class="h-4 w-4" />
+                        </button>
+                      </div>
                     </div>
                   {/each}
                 </div>
