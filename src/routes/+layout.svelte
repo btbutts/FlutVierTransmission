@@ -11,12 +11,12 @@ import {
   type Torrent
 } from '$lib';
 
+import AddTorrentButton from '$lib/components/AddTorrentButton.svelte';
 import AddTorrentMasterModal from '$lib/components/AddTorrentMasterModal.svelte';
 import RefreshButton from '$lib/components/RefreshButton.svelte';
 import SettingsButton from '$lib/components/SettingsButton.svelte';
 import SettingsModal from '$lib/components/SettingsModal.svelte';
 import { createHorizontalScrollSync } from '$lib/horizontalScrollSync.svelte';
-import { Plus } from '$lib/plugins';
 
 import '@fontsource-variable/inter/index.css';
 import '@fontsource/inter/400.css';
@@ -68,14 +68,11 @@ $effect(() => {
         {/if}
       </div>
       <div class="flex items-center space-x-2">
-        <button
-          onclick={() => (addTorrentModalOpen = true)}
-          class="flex items-center space-x-2 rounded-md bg-blue-600 px-4 py-2 text-sm text-nowrap text-white shadow-sm hover:bg-blue-800"
+        <AddTorrentButton
+          onclick={() => { addTorrentModalOpen = true; }}
           disabled={$isLoading}
-        >
-          <Plus class="h-4 w-4" />
-          <span>Add Torrent</span>
-        </button>
+          class="flex items-center space-x-2 rounded-md bg-blue-600 px-4 py-2 text-sm text-nowrap text-white shadow-sm hover:bg-blue-800"
+        />
         {#if $selectedTorrents.length > 0}
           <button
             onclick={() => performActionAndRefresh($selectedTorrents, 'start')}
