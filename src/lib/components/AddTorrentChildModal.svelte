@@ -37,9 +37,10 @@ const startLabel = $derived(totalItems > 1 ? 'Start Torrents' : 'Start Torrent')
   the outer overlay). Without it, all interactive elements inside would be dead.
 -->
 <div
-  class="bg-ColorPalette-bg-secondary ring-ColorPalette-modal-ring-secondary/50 pointer-events-auto max-h-[40vh] w-full max-w-md overflow-y-auto rounded-xl p-8 ring-1"
+  class="bg-ColorPalette-bg-secondary ring-ColorPalette-modal-ring-secondary/50 pointer-events-auto max-h-[70vh] w-full max-w-md overflow-hidden rounded-xl ring-1"
   style="box-shadow: 0 0 0 1px rgba(0,0,0,0.15), 0 0 40px 16px rgba(0,0,0,0.65), 0 0 120px 60px rgba(0,0,0,0.5)"
 >
+  <div class="max-h-[70vh] overflow-y-auto overscroll-contain p-8">
   <!-- Header: title left, Backburger back button right -->
   <div class="mb-6 flex items-center justify-between">
     <h2 class="text-ColorPalette-text-secondary text-2xl font-bold">Choose Torrent Files</h2>
@@ -83,5 +84,6 @@ const startLabel = $derived(totalItems > 1 ? 'Start Torrents' : 'Start Torrent')
         Cancel
       </button>
     </div>
+  </div>
   </div>
 </div>

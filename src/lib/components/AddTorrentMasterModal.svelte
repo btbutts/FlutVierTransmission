@@ -1,7 +1,5 @@
 <!-- src/lib/components/AddTorrentMasterModal.svelte -->
 <script lang="ts">
-import { tick } from 'svelte';
-
 import { addTorrent, addTorrentMetainfo, error, refreshAll } from '$lib';
 
 import { windowPopUp } from '$lib/helpers';
@@ -23,114 +21,155 @@ let selectedFiles = $state<Array<{ name: string; base64: string }>>([]);
 let startTorrent = $state(true);
 let fileInputEl = $state<HTMLInputElement | undefined>(undefined);
 
-// ── Animation state ────────────────────────────────────────────────────────────
-// Each card is positioned via `transform: translateX(...)`.
-// Transitions are applied only when animating; set to 'none' for instant snaps.
-// tick() + requestAnimationFrame ensures the browser commits the start position
-// before the end position is applied, so the transition actually fires.
+// ── Animation refs & guard ─────────────────────────────────────────────────────
+// $state satisfies Svelte 5's bind:this requirement.
+// We never read these in reactive contexts ($derived / template expressions),
+// so making them $state has no batching effect on our imperative animation code.
+let masterCardElement = $state<HTMLDivElement | undefined>(undefined);
+let childCardElement = $state<HTMLDivElement | undefined>(undefined);
 let isAnimating = $state(false);
-let masterX = $state('0px');
-let childX = $state('150vw');
-let masterTransition = $state('none');
-let childTransition = $state('none');
+
+// Animation timing constants
+const INCOMING_MS = 800; // incoming card: ease-out slide to centre
+const OUTGOING_MS = 500; // outgoing card: ease-in slide off-screen (starts at proximity)
+// 80px accounts for one RAF frame of card travel (~16ms) plus the frame in which
+// the exit applyStyle takes visual effect — net visual gap at exit start ≈ 12–20px.
+const PROXIMITY_PX = 175;
 
 // ── Derived ────────────────────────────────────────────────────────────────────
 const totalItems = $derived(selectedFiles.length + (newTorrentUrl.trim() ? 1 : 0));
 const startLabel = $derived(totalItems > 1 ? 'Start Torrents' : 'Start Torrent');
 const canAdd = $derived(newTorrentUrl.trim().length > 0 || selectedFiles.length > 0);
 
+// ── Animation helpers ──────────────────────────────────────────────────────────
 /**
- * Master card style: always uses transform + transition (never switches to
- * `animation`). The box-shadow is a constant suffix so it persists at all times.
+ * Apply transform + transition to a card element directly.
+ * Setting both in the same synchronous call is intentional:
+ * the browser computes the transition against the PREVIOUS committed style,
+ * so a `transition: none → X` + `transform: A → B` change in one batch
+ * correctly starts the CSS transition from A to B.
  */
-const masterCardStyle = $derived(
-  `transform: translateX(${masterX}); transition: ${masterTransition}; ` +
-    'box-shadow: 0 0 0 1px rgba(0,0,0,0.15), 0 0 40px 16px rgba(0,0,0,0.65), 0 0 120px 60px rgba(0,0,0,0.5);'
-);
+function applyStyle(el: HTMLElement, transition: string, transform: string) {
+  el.style.transition = transition;
+  el.style.transform = transform;
+}
 
 /**
- * Child wrapper style: same transform + transition pattern. The card shadow
- * lives inside AddTorrentChildModal itself.
+ * Force a synchronous layout calculation.
+ * Calling getBoundingClientRect() causes the browser to flush pending style
+ * changes and compute positions — essential before starting a new transition
+ * so the browser registers the "before" position unambiguously.
  */
-const childWrapperStyle = $derived(
-  `transform: translateX(${childX}); transition: ${childTransition};`
-);
+function reflow(el: HTMLElement) {
+  void el.getBoundingClientRect();
+}
 
 // ── Actions ────────────────────────────────────────────────────────────────────
 function closeModal() {
   open = false;
   newTorrentUrl = '';
   selectedFiles = [];
-  // Reset animation state so next open starts clean
-  masterX = '0px';
-  childX = '150vw';
-  masterTransition = 'none';
-  childTransition = 'none';
   isAnimating = false;
+  // DOM refs become undefined on unmount; no style cleanup needed —
+  // the {#if open} block remounts fresh elements each time.
 }
 
 /**
- * Slide child in from the right, push master out to the left.
+ * Slide the child card in from the right, push the master card out to the left.
  *
- * Push-effect timing:
- *   Child  — 400ms ease-out  (decelerates as it reaches centre)
- *   Master — 260ms ease-in, 140ms delay  (stays still while child crosses ~35%
- *            of its travel, then accelerates leftward — "pushed" feel)
+ * Sequence:
+ *   1. Snap both cards to their start positions instantly (no transition).
+ *   2. reflow() commits those positions to the browser's layout engine.
+ *   3. Immediately start the child's ease-out slide — no tick()/RAF delay,
+ *      so the animation begins on the very next paint (imperceptible latency).
+ *   4. Each RAF frame, measure the rendered gap between the two card edges.
+ *   5. Once gap ≤ PROXIMITY_PX, start master's ease-in exit (OUTGOING_MS).
  *
- * tick() flushes Svelte's DOM update so the browser commits the start positions.
- * requestAnimationFrame then fires after the browser paints that frame, giving
- * the CSS transition engine a clear before→after to interpolate.
+ * Viewport-width-independent: gap is measured in real device pixels every frame.
  */
-async function openAddTorrentChildModal() {
-  if (isAnimating) return;
+function openChild() {
+  if (isAnimating || !masterCardElement || !childCardElement) return;
   isAnimating = true;
 
-  // Snap to start positions with no transition
-  masterTransition = 'none';
-  childTransition = 'none';
-  masterX = '0px';
-  childX = '150vw';
+  const master = masterCardElement;
+  const child = childCardElement;
 
-  await tick();
+  // ① Snap to start positions; reflow commits them so CSS transition has a
+  //    clean "before" value — no tick()/RAF needed after this.
+  applyStyle(master, 'none', 'translateX(0)');
+  applyStyle(child, 'none', 'translateX(150vw)');
+  reflow(master);
+  reflow(child);
 
-  requestAnimationFrame(() => {
-    masterTransition = 'transform 260ms ease-in 340ms';
-    childTransition = 'transform 400ms ease-out';
-    masterX = '-150vw';
-    childX = '0px';
+  // ② Start child sliding in immediately
+  applyStyle(child, `transform ${INCOMING_MS}ms ease-out`, 'translateX(0)');
 
-    setTimeout(() => {
-      isAnimating = false;
-    }, 450);
-  });
+  let exitStarted = false;
+
+  // ③ Poll each frame until cards are within PROXIMITY_PX of each other
+  function checkProximity() {
+    if (exitStarted) return;
+
+    const gap = child.getBoundingClientRect().left - master.getBoundingClientRect().right;
+
+    if (gap <= PROXIMITY_PX) {
+      exitStarted = true;
+      // ④ Master exits left (ease-in: slow start → accelerates off-screen)
+      applyStyle(master, `transform ${OUTGOING_MS}ms ease-in`, 'translateX(-150vw)');
+      setTimeout(() => {
+        isAnimating = false;
+      }, OUTGOING_MS + 50);
+      return;
+    }
+
+    requestAnimationFrame(checkProximity);
+  }
+
+  requestAnimationFrame(checkProximity);
 }
 
 /**
- * Slide master in from the left, push child out to the right.
- * Mirror timing of openAddTorrentChildModal.
+ * Slide the master card in from the left, push the child card out to the right.
+ * Exact mirror of openChild().
  */
-async function closeAddTorrentChildModal() {
-  if (isAnimating) return;
+function closeChild() {
+  if (isAnimating || !masterCardElement || !childCardElement) return;
   isAnimating = true;
 
-  // Snap to start positions with no transition
-  masterTransition = 'none';
-  childTransition = 'none';
-  masterX = '-150vw';
-  childX = '0px';
+  const master = masterCardElement;
+  const child = childCardElement;
 
-  await tick();
+  // ① Snap to start positions; reflow commits them
+  applyStyle(master, 'none', 'translateX(-150vw)');
+  applyStyle(child, 'none', 'translateX(0)');
+  reflow(master);
+  reflow(child);
 
-  requestAnimationFrame(() => {
-    masterTransition = 'transform 400ms ease-out';
-    childTransition = 'transform 260ms ease-in 340ms';
-    masterX = '0px';
-    childX = '150vw';
+  // ② Start master sliding in immediately
+  applyStyle(master, `transform ${INCOMING_MS}ms ease-out`, 'translateX(0)');
 
-    setTimeout(() => {
-      isAnimating = false;
-    }, 450);
-  });
+  let exitStarted = false;
+
+  // ③ Poll until cards are within PROXIMITY_PX of each other
+  function checkProximity() {
+    if (exitStarted) return;
+
+    const gap = child.getBoundingClientRect().left - master.getBoundingClientRect().right;
+
+    if (gap <= PROXIMITY_PX) {
+      exitStarted = true;
+      // ④ Child exits right (ease-in)
+      applyStyle(child, `transform ${OUTGOING_MS}ms ease-in`, 'translateX(150vw)');
+      setTimeout(() => {
+        isAnimating = false;
+      }, OUTGOING_MS + 50);
+      return;
+    }
+
+    requestAnimationFrame(checkProximity);
+  }
+
+  requestAnimationFrame(checkProximity);
 }
 
 function removeFile(index: number) {
@@ -188,9 +227,10 @@ async function handleAddTorrent() {
 
 {#if open}
   <!--
-    Outer overlay: bg-black/50 backdrop + overflow-hidden to clip cards during
-    slide animations. onclick with target === currentTarget closes on backdrop click;
-    pointer-events-none on child wrappers ensures dark-area clicks reach this div.
+    Outer overlay: bg-black/50 backdrop + overflow-hidden to clip both cards
+    during the slide animations so they never bleed outside the viewport.
+    onclick with target === currentTarget enables backdrop-click-to-close;
+    the pointer-events-none centering wrappers pass unhandled clicks through.
   -->
   <div
     use:windowPopUp
@@ -202,7 +242,7 @@ async function handleAddTorrent() {
     onclick={(event) => event.target === event.currentTarget && closeModal()}
     onkeydown={(event) => event.key === 'Escape' && closeModal()}
   >
-    <!-- Hidden native file picker — triggered programmatically by the Browse button -->
+    <!-- Hidden native file picker — triggered programmatically by Browse button -->
     <input
       bind:this={fileInputEl}
       type="file"
@@ -214,15 +254,20 @@ async function handleAddTorrent() {
 
     <!-- ── Master card ──────────────────────────────────────────────────────── -->
     <!--
-      pointer-events-none on the centering wrapper so clicks on the dark area
-      pass through to the outer overlay (enabling backdrop-click-to-close).
-      pointer-events-auto on the card itself re-enables interactions inside it.
+      The outer div is the flex-centering wrapper (pointer-events-none so
+      backdrop clicks pass through). The inner div is the actual card —
+      bind:this gives us the DOM ref for direct style manipulation.
+      The initial `style` positions it at centre (translateX 0); the JS
+      animation functions overwrite transform/transition directly from there.
+      box-shadow is inlined here (not driven by JS) so it persists at all times.
     -->
     <div class="pointer-events-none absolute inset-0 flex items-center justify-center p-4">
       <div
-        class="bg-ColorPalette-bg-secondary ring-ColorPalette-modal-ring-secondary/50 pointer-events-auto max-h-[40vh] w-full max-w-md overflow-y-auto rounded-xl p-8 ring-1"
-        style={masterCardStyle}
+        bind:this={masterCardElement}
+        class="bg-ColorPalette-bg-secondary ring-ColorPalette-modal-ring-secondary/50 pointer-events-auto max-h-[70vh] w-full max-w-md overflow-hidden rounded-xl ring-1"
+        style="transform: translateX(0); box-shadow: 0 0 0 1px rgba(0,0,0,0.15), 0 0 40px 16px rgba(0,0,0,0.65), 0 0 120px 60px rgba(0,0,0,0.5);"
       >
+        <div class="max-h-[70vh] overflow-y-auto overscroll-contain p-8">
         <h2 id="add-torrent-title" class="text-ColorPalette-text-secondary mb-6 text-2xl font-bold">
           Add Torrent
         </h2>
@@ -236,7 +281,7 @@ async function handleAddTorrent() {
                     class="bg-ColorPalette-bg-tertiary text-ColorPalette-text-tertiary min-w-0 flex-1 truncate rounded-md px-2 py-1 text-xs"
                     title={file.name}>{file.name}</span
                   >
-                  <!-- px-[11.5px] invisible padding — aligns remove button column with Add btn -->
+                  <!-- px-[11.5px] padding visually aligns the remove column with the Add button -->
                   <div class="flex shrink-0 items-center justify-center px-[11.5px]">
                     <button
                       type="button"
@@ -270,10 +315,10 @@ async function handleAddTorrent() {
             >
               <FileFind class="h-5 w-5" />
             </button>
-            <!-- Configure: slides in the child modal to select per-file priorities -->
+            <!-- Configure: slides in the child modal for per-file priority selection -->
             <button
               type="button"
-              onclick={openAddTorrentChildModal}
+              onclick={openChild}
               title="Select files to download from torrent"
               aria-label="Configure Torrent Files"
               class="inline-flex aspect-square shrink-0 items-center justify-center rounded-md bg-gray-700/90 p-1.5 text-white shadow-sm backdrop-blur-sm transition-all duration-200 hover:bg-gray-600 focus:outline-none active:scale-[0.97] active:bg-gray-800 dark:bg-gray-700/90 dark:hover:bg-gray-600 dark:active:bg-gray-800"
@@ -309,24 +354,30 @@ async function handleAddTorrent() {
             </button>
           </div>
         </div>
+        </div>
       </div>
     </div>
 
     <!-- ── Child card ───────────────────────────────────────────────────────── -->
     <!--
-      Same pointer-events-none wrapper pattern. The animation wrapper div
-      is pointer-events-auto so AddTorrentChildModal's interactions work;
-      AddTorrentChildModal also explicitly sets pointer-events-auto on its
-      root card element in case of CSS inheritance edge cases.
+      Same pointer-events-none centering wrapper pattern. The inner div is
+      the animation target (bind:this → childCardElement); it starts off-screen
+      right via the initial translateX(150vw) inline style. The JS proximity
+      loop writes transform/transition directly on this element.
+      AddTorrentChildModal sets pointer-events-auto on its own root card.
     -->
     <div class="pointer-events-none absolute inset-0 flex items-center justify-center p-4">
-      <div class="pointer-events-auto" style={childWrapperStyle}>
+      <div
+        bind:this={childCardElement}
+        class="pointer-events-auto"
+        style="transform: translateX(150vw);"
+      >
         <AddTorrentChildModal
           bind:startTorrent
           {totalItems}
           {canAdd}
           onClose={closeModal}
-          onBack={closeAddTorrentChildModal}
+          onBack={closeChild}
           onAdd={handleAddTorrent}
         />
       </div>
