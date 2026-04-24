@@ -67,6 +67,18 @@ export async function addTorrent(
   });
 }
 
+// Add a torrent from a local .torrent file via base64-encoded metainfo
+export async function addTorrentMetainfo(
+  metainfo: string,
+  options: { paused?: boolean; downloadDir?: string } = {}
+) {
+  return callRpc('torrent-add', {
+    metainfo,
+    paused: options.paused ?? false,
+    'download-dir': options.downloadDir
+  });
+}
+
 // Torrent actions (matches Flood: start/stop/pause/remove)
 export async function startTorrents(ids: number[]) {
   return callRpc('torrent-start', { ids });

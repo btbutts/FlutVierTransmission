@@ -9,6 +9,7 @@ export {
     isLoading,
     error,
     addTorrent,
+    addTorrentMetainfo,
     startTorrents,
     stopTorrents,
     removeTorrents,

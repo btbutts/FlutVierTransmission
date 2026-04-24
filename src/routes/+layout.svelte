@@ -2,7 +2,6 @@
 import './+layout.css';
 
 import {
-  addTorrent,
   error,
   isLoading,
   performActionAndRefresh,
@@ -12,17 +11,17 @@ import {
   type Torrent
 } from '$lib';
 
+import AddTorrentMasterModal from '$lib/components/AddTorrentMasterModal.svelte';
 import RefreshButton from '$lib/components/RefreshButton.svelte';
 import SettingsButton from '$lib/components/SettingsButton.svelte';
 import SettingsModal from '$lib/components/SettingsModal.svelte';
 import { createHorizontalScrollSync } from '$lib/horizontalScrollSync.svelte';
+import { Plus } from '$lib/plugins';
 
 import '@fontsource-variable/inter/index.css';
 import '@fontsource/inter/400.css';
 import '@fontsource/inter/500.css';
 import '@fontsource/inter/600.css';
-
-import { Plus } from '$lib/plugins';
 
 // Sidebar stats (computed from torrents; session lacks totals)
 const totalDownloaded = $derived(
@@ -37,25 +36,11 @@ const totalUploaded = $derived(
 );
 const activeCount = $derived($torrents.filter((t: Torrent) => [4, 5, 6].includes(t.status)).length);
 
-let addModalOpen = $state(false);
-let newTorrentUrl = $state('');
+let addTorrentModalOpen = $state(false);
 let settingsOpen = $state(false);
 let { children } = $props();
 
 const scrollSync = createHorizontalScrollSync();
-
-async function handleAdd() {
-  if (newTorrentUrl.trim()) {
-    try {
-      await addTorrent(newTorrentUrl);
-      newTorrentUrl = '';
-      addModalOpen = false;
-      await refreshAll();
-    } catch (err: unknown) {
-      error.set(err instanceof Error ? err.message : 'Add failed');
-    }
-  }
-}
 
 $effect(() => {
   // Auto-refresh every 20s
@@ -70,7 +55,10 @@ $effect(() => {
   <header
     class="text-ColorPalette-text-primary/80 border-ColorPalette-border-secondary/50 bg-ColorPalette-bg-secondary/80 fixed top-0 right-0 left-0 z-30 flex h-16 items-center justify-between border-b px-4 shadow-sm backdrop-blur"
   >
-    <SettingsButton onclick={() => (settingsOpen = true)} class="absolute top-1/2 left-4 -translate-y-1/2" />
+    <SettingsButton
+      onclick={() => (settingsOpen = true)}
+      class="absolute top-1/2 left-4 -translate-y-1/2"
+    />
 
     <div class="flex min-w-0 flex-1 items-center justify-between pl-12 lg:pl-[264px]">
       <div class="flex min-w-0 items-center space-x-4">
@@ -81,7 +69,7 @@ $effect(() => {
       </div>
       <div class="flex items-center space-x-2">
         <button
-          onclick={() => (addModalOpen = true)}
+          onclick={() => (addTorrentModalOpen = true)}
           class="flex items-center space-x-2 rounded-md bg-blue-600 px-4 py-2 text-sm text-nowrap text-white shadow-sm hover:bg-blue-800"
           disabled={$isLoading}
         >
@@ -152,47 +140,7 @@ $effect(() => {
   </div>
 
   <!-- Add Torrent Modal -->
-  {#if addModalOpen}
-    <div
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-      role="presentation"
-      onclick={(event) => {
-        if (event.target === event.currentTarget) {
-          addModalOpen = false;
-        }
-      }}
-    >
-      <div
-        class="bg-ColorPalette-bg-secondary ring-ColorPalette-modal-ring-secondary/50 max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl p-8 shadow-2xl ring-1"
-        style="box-shadow: 0 0 0 1px rgba(0,0,0,0.15), 0 0 40px 16px rgba(0,0,0,0.65), 0 0 120px 60px rgba(0,0,0,0.5)"
-      >
-        <h2 class="text-ColorPalette-text-secondary mb-6 text-2xl font-bold">Add Torrent</h2>
-        <div class="space-y-4">
-          <input
-            bind:value={newTorrentUrl}
-            placeholder="Paste magnet link or .torrent URL"
-            class="border-ColorPalette-border-primary focus:border-ColorPalette-input-ring-focus-primary focus:ring-ColorPalette-input-ring-focus-primary bg-ColorPalette-bg-tertiary text-ColorPalette-text-tertiary focus:text-ColorPalette-text-primary w-full rounded-md border p-1.5 text-xs focus:ring-2 focus:outline-none"
-          />
-          <div class="flex space-x-3 pt-2">
-            <button
-              onclick={handleAdd}
-              disabled={!newTorrentUrl.trim()}
-              class="inline-flex flex-1 items-center justify-center gap-2 rounded-md bg-blue-600 px-4 py-2 font-medium text-white shadow-sm transition-all hover:bg-blue-700 disabled:opacity-50"
-            >
-              <Plus class="h-[1em] w-[1em] shrink-0" />
-              <span>Add Torrent</span>
-            </button>
-            <button
-              onclick={() => (addModalOpen = false)}
-              class="flex-1 rounded-md bg-gray-500 px-4 py-2 font-medium text-white shadow-sm transition-all hover:bg-gray-600"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  {/if}
+  <AddTorrentMasterModal bind:open={addTorrentModalOpen} />
 
   <!-- Settings Modal (always mounted so theme effects run at app start) -->
   <SettingsModal bind:open={settingsOpen} />
