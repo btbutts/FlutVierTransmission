@@ -192,3 +192,74 @@ export async function updateBlocklist(): Promise<number> {
   await refreshSession();
   return res['blocklist-size'];
 }
+
+// ─── File-Select Workflow Helpers ─────────────────────────────────────────────
+
+interface TorrentAddRpcEntry {
+  id: number;
+  name: string;
+  hashString: string;
+}
+interface TorrentAddRpcResponse {
+  'torrent-added'?: TorrentAddRpcEntry;
+  'torrent-duplicate'?: TorrentAddRpcEntry;
+}
+
+/**
+ * Add a magnet link or .torrent URL for the file-select workflow.
+ * The torrent is started immediately (paused: false) so peers can serve
+ * the metadata — required before a file list is available.
+ * Returns the server-assigned ID, display name, and duplicate flag.
+ */
+export async function addTorrentForSelect(
+  filename: string
+): Promise<{ id: number; name: string; isDuplicate: boolean }> {
+  const res = await callRpc<TorrentAddRpcResponse>('torrent-add', {
+    filename,
+    paused: false
+  });
+  const entry = res['torrent-added'] ?? res['torrent-duplicate'];
+  if (!entry) throw new Error('torrent-add returned no torrent entry');
+  return { id: entry.id, name: entry.name, isDuplicate: !!res['torrent-duplicate'] };
+}
+
+/**
+ * Add a local .torrent file (base64-encoded metainfo) for the file-select workflow.
+ * The torrent is always added paused because full metadata is already local.
+ * Returns the server-assigned ID, display name, and duplicate flag.
+ */
+export async function addTorrentMetainfoForSelect(
+  metainfo: string
+): Promise<{ id: number; name: string; isDuplicate: boolean }> {
+  const res = await callRpc<TorrentAddRpcResponse>('torrent-add', {
+    metainfo,
+    paused: true
+  });
+  const entry = res['torrent-added'] ?? res['torrent-duplicate'];
+  if (!entry) throw new Error('torrent-add returned no torrent entry');
+  return { id: entry.id, name: entry.name, isDuplicate: !!res['torrent-duplicate'] };
+}
+
+/**
+ * Fetch the name, file list, and metadata-completion percentage for a single torrent.
+ * Used to poll magnet metadata download progress and to read .torrent file lists.
+ */
+export async function getTorrentFilesList(id: number): Promise<{
+  id: number;
+  name: string;
+  metadataPercentComplete: number;
+  files?: Array<{ name: string; length: number }>;
+} | null> {
+  const res = await callRpc<{
+    torrents: Array<{
+      id: number;
+      name: string;
+      metadataPercentComplete: number;
+      files?: Array<{ name: string; length: number }>;
+    }>;
+  }>('torrent-get', {
+    ids: [id],
+    fields: ['id', 'name', 'metadataPercentComplete', 'files']
+  });
+  return res.torrents?.[0] ?? null;
+}

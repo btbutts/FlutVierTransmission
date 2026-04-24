@@ -21,7 +21,10 @@ export {
     updateBlocklist,
     currentTorrent,
     refreshTorrent,
-    setFilePriorities
+    setFilePriorities,
+    addTorrentForSelect,
+    addTorrentMetainfoForSelect,
+    getTorrentFilesList
 } from './stores';
 export type { Torrent } from './types';
 export type { DropdownOption } from './components/dropdown.svelte';

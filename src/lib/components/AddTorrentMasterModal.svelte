@@ -29,6 +29,12 @@ let masterCardElement = $state<HTMLDivElement | undefined>(undefined);
 let childCardElement = $state<HTMLDivElement | undefined>(undefined);
 let isAnimating = $state(false);
 
+// ── Child activation ───────────────────────────────────────────────────────────
+// Flipping this to true passes the current queue (selectedFiles + newTorrentUrl)
+// to the child card and triggers its file-fetch workflow. Flipping it back to
+// false tells the child to abort in-flight work and remove any torrents it added.
+let childActive = $state(false);
+
 // Animation timing constants
 const INCOMING_MS = 800; // incoming card: ease-out slide to centre
 const OUTGOING_MS = 500; // outgoing card: ease-in slide off-screen (starts at proximity)
@@ -66,6 +72,7 @@ function reflow(el: HTMLElement) {
 
 // ── Actions ────────────────────────────────────────────────────────────────────
 function closeModal() {
+  childActive = false;
   open = false;
   newTorrentUrl = '';
   selectedFiles = [];
@@ -89,6 +96,7 @@ function closeModal() {
  */
 function openChild() {
   if (isAnimating || !masterCardElement || !childCardElement) return;
+  childActive = true;
   isAnimating = true;
 
   const master = masterCardElement;
@@ -134,6 +142,7 @@ function openChild() {
  */
 function closeChild() {
   if (isAnimating || !masterCardElement || !childCardElement) return;
+  childActive = false;
   isAnimating = true;
 
   const master = masterCardElement;
@@ -268,92 +277,95 @@ async function handleAddTorrent() {
         style="transform: translateX(0); box-shadow: 0 0 0 1px rgba(0,0,0,0.15), 0 0 40px 16px rgba(0,0,0,0.65), 0 0 120px 60px rgba(0,0,0,0.5);"
       >
         <div class="max-h-[70vh] overflow-y-auto overscroll-contain p-8">
-        <h2 id="add-torrent-title" class="text-ColorPalette-text-secondary mb-6 text-2xl font-bold">
-          Add Torrent
-        </h2>
-        <div class="space-y-4">
-          <!-- Selected .torrent files list (mirrors Common Paths styling) -->
-          {#if selectedFiles.length > 0}
-            <div class="space-y-1">
-              {#each selectedFiles as file, i (file.name)}
-                <div class="flex items-center gap-2">
-                  <span
-                    class="bg-ColorPalette-bg-tertiary text-ColorPalette-text-tertiary min-w-0 flex-1 truncate rounded-md px-2 py-1 text-xs"
-                    title={file.name}>{file.name}</span
-                  >
-                  <!-- px-[11.5px] padding visually aligns the remove column with the Add button -->
-                  <div class="flex shrink-0 items-center justify-center px-[11.5px]">
-                    <button
-                      type="button"
-                      onclick={() => removeFile(i)}
-                      aria-label="Remove {file.name}"
-                      class="bg-ColorPalette-bg-quinary hover:bg-ColorPalette-button-bg-hover-tertiary text-ColorPalette-text-quinary flex h-6 w-6 items-center justify-center rounded-md transition-colors hover:text-red-600"
+          <h2
+            id="add-torrent-title"
+            class="text-ColorPalette-text-secondary mb-6 text-2xl font-bold"
+          >
+            Add Torrent
+          </h2>
+          <div class="space-y-4">
+            <!-- Selected .torrent files list (mirrors Common Paths styling) -->
+            {#if selectedFiles.length > 0}
+              <div class="space-y-1">
+                {#each selectedFiles as file, i (file.name)}
+                  <div class="flex items-center gap-2">
+                    <span
+                      class="bg-ColorPalette-bg-tertiary text-ColorPalette-text-tertiary min-w-0 flex-1 truncate rounded-md px-2 py-1 text-xs"
+                      title={file.name}>{file.name}</span
                     >
-                      <Close class="h-4 w-4" />
-                    </button>
+                    <!-- px-[11.5px] padding visually aligns the remove column with the Add button -->
+                    <div class="flex shrink-0 items-center justify-center px-[11.5px]">
+                      <button
+                        type="button"
+                        onclick={() => removeFile(i)}
+                        aria-label="Remove {file.name}"
+                        class="bg-ColorPalette-bg-quinary hover:bg-ColorPalette-button-bg-hover-tertiary text-ColorPalette-text-quinary flex h-6 w-6 items-center justify-center rounded-md transition-colors hover:text-red-600"
+                      >
+                        <Close class="h-4 w-4" />
+                      </button>
+                    </div>
                   </div>
-                </div>
-              {/each}
+                {/each}
+              </div>
+            {/if}
+
+            <!-- URL/magnet input · Browse button · Configure button (one flex row) -->
+            <div class="flex items-stretch gap-2">
+              <input
+                bind:value={newTorrentUrl}
+                placeholder="Paste magnet link or .torrent URL"
+                onkeydown={(e) => e.key === 'Enter' && handleAddTorrent()}
+                class="border-ColorPalette-border-primary focus:border-ColorPalette-input-ring-focus-primary focus:ring-ColorPalette-input-ring-focus-primary bg-ColorPalette-bg-tertiary text-ColorPalette-text-tertiary focus:text-ColorPalette-text-primary min-w-0 flex-1 rounded-md border p-1.5 text-xs focus:ring-2 focus:outline-none"
+              />
+              <!-- Browse: opens OS native file picker for local .torrent files -->
+              <button
+                type="button"
+                onclick={() => fileInputEl?.click()}
+                title="Browse for torrents from local machine"
+                aria-label="Browse for torrents from local machine"
+                class="inline-flex aspect-square shrink-0 items-center justify-center rounded-md bg-gray-700/90 p-1.5 text-white shadow-sm backdrop-blur-sm transition-all duration-200 hover:bg-gray-600 focus:outline-none active:scale-[0.97] active:bg-gray-800 dark:bg-gray-700/90 dark:hover:bg-gray-600 dark:active:bg-gray-800"
+              >
+                <FileFind class="h-5 w-5" />
+              </button>
+              <!-- Configure: slides in the child modal for per-file priority selection -->
+              <button
+                type="button"
+                onclick={openChild}
+                title="Select files to download from torrent"
+                aria-label="Configure Torrent Files"
+                class="inline-flex aspect-square shrink-0 items-center justify-center rounded-md bg-gray-700/90 p-1.5 text-white shadow-sm backdrop-blur-sm transition-all duration-200 hover:bg-gray-600 focus:outline-none active:scale-[0.97] active:bg-gray-800 dark:bg-gray-700/90 dark:hover:bg-gray-600 dark:active:bg-gray-800"
+              >
+                <Forwardburger class="h-5 w-5" />
+              </button>
             </div>
-          {/if}
 
-          <!-- URL/magnet input · Browse button · Configure button (one flex row) -->
-          <div class="flex items-stretch gap-2">
-            <input
-              bind:value={newTorrentUrl}
-              placeholder="Paste magnet link or .torrent URL"
-              onkeydown={(e) => e.key === 'Enter' && handleAddTorrent()}
-              class="border-ColorPalette-border-primary focus:border-ColorPalette-input-ring-focus-primary focus:ring-ColorPalette-input-ring-focus-primary bg-ColorPalette-bg-tertiary text-ColorPalette-text-tertiary focus:text-ColorPalette-text-primary min-w-0 flex-1 rounded-md border p-1.5 text-xs focus:ring-2 focus:outline-none"
-            />
-            <!-- Browse: opens OS native file picker for local .torrent files -->
-            <button
-              type="button"
-              onclick={() => fileInputEl?.click()}
-              title="Browse for torrents from local machine"
-              aria-label="Browse for torrents from local machine"
-              class="inline-flex aspect-square shrink-0 items-center justify-center rounded-md bg-gray-700/90 p-1.5 text-white shadow-sm backdrop-blur-sm transition-all duration-200 hover:bg-gray-600 focus:outline-none active:scale-[0.97] active:bg-gray-800 dark:bg-gray-700/90 dark:hover:bg-gray-600 dark:active:bg-gray-800"
-            >
-              <FileFind class="h-5 w-5" />
-            </button>
-            <!-- Configure: slides in the child modal for per-file priority selection -->
-            <button
-              type="button"
-              onclick={openChild}
-              title="Select files to download from torrent"
-              aria-label="Configure Torrent Files"
-              class="inline-flex aspect-square shrink-0 items-center justify-center rounded-md bg-gray-700/90 p-1.5 text-white shadow-sm backdrop-blur-sm transition-all duration-200 hover:bg-gray-600 focus:outline-none active:scale-[0.97] active:bg-gray-800 dark:bg-gray-700/90 dark:hover:bg-gray-600 dark:active:bg-gray-800"
-            >
-              <Forwardburger class="h-5 w-5" />
-            </button>
+            <!-- Start torrent(s) checkbox -->
+            <label class="flex items-center gap-2">
+              <input
+                type="checkbox"
+                bind:checked={startTorrent}
+                class="text-ColorPalette-modal-TxtAccent-secondary h-4 w-4 rounded border-gray-300 focus:ring-blue-500 focus:outline-none"
+              />
+              <span class="text-ColorPalette-text-secondary text-sm">{startLabel}</span>
+            </label>
+
+            <!-- Action buttons -->
+            <div class="flex space-x-3 pt-2">
+              <AddTorrentButton
+                onclick={handleAddTorrent}
+                disabled={!canAdd}
+                label="Add Torrent{totalItems > 1 ? 's' : ''}"
+                class="inline-flex flex-1 items-center justify-center gap-2 rounded-md bg-blue-600 px-4 py-2 font-medium text-white shadow-sm transition-all hover:bg-blue-700 disabled:opacity-50"
+              />
+              <button
+                type="button"
+                onclick={closeModal}
+                class="flex-1 rounded-md bg-gray-500 px-4 py-2 font-medium text-white shadow-sm transition-all hover:bg-gray-600"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
-
-          <!-- Start torrent(s) checkbox -->
-          <label class="flex items-center gap-2">
-            <input
-              type="checkbox"
-              bind:checked={startTorrent}
-              class="text-ColorPalette-modal-TxtAccent-secondary h-4 w-4 rounded border-gray-300 focus:ring-blue-500 focus:outline-none"
-            />
-            <span class="text-ColorPalette-text-secondary text-sm">{startLabel}</span>
-          </label>
-
-          <!-- Action buttons -->
-          <div class="flex space-x-3 pt-2">
-            <AddTorrentButton
-              onclick={handleAddTorrent}
-              disabled={!canAdd}
-              label="Add Torrent{totalItems > 1 ? 's' : ''}"
-              class="inline-flex flex-1 items-center justify-center gap-2 rounded-md bg-blue-600 px-4 py-2 font-medium text-white shadow-sm transition-all hover:bg-blue-700 disabled:opacity-50"
-            />
-            <button
-              type="button"
-              onclick={closeModal}
-              class="flex-1 rounded-md bg-gray-500 px-4 py-2 font-medium text-white shadow-sm transition-all hover:bg-gray-600"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
         </div>
       </div>
     </div>
@@ -369,16 +381,17 @@ async function handleAddTorrent() {
     <div class="pointer-events-none absolute inset-0 flex items-center justify-center p-4">
       <div
         bind:this={childCardElement}
-        class="pointer-events-auto"
+        class="pointer-events-auto w-full max-w-[45rem]"
         style="transform: translateX(150vw);"
       >
         <AddTorrentChildModal
           bind:startTorrent
-          {totalItems}
-          {canAdd}
+          files={selectedFiles}
+          magnetUrl={newTorrentUrl}
+          active={childActive}
           onClose={closeModal}
           onBack={closeChild}
-          onAdd={handleAddTorrent}
+          onDone={closeModal}
         />
       </div>
     </div>
