@@ -470,15 +470,24 @@ function openFiles(t: Torrent) {
                         title={torrent.name}>{getDisplayValue(torrent, col.key)}</span
                       >
                     {:else if col.key === 'status'}
-                      <span
-                        class="rounded-full px-1.5 py-0.5 font-medium {statusClass(
-                          torrent.status,
-                          torrent.error
-                        )} max-w-full truncate"
-                        title={statusText(torrent.status, torrent.error, torrent.errorString)}
-                      >
-                        {statusText(torrent.status, torrent.error, torrent.errorString)}
-                      </span>
+                      {@const badgeText = statusText(torrent.status, torrent.error, torrent.errorString)}
+                      {@const badgeClass = statusClass(torrent.status, torrent.error)}
+                      {#if badgeText.toLowerCase() === 'access denied, torrents limit reached'}
+                        <span
+                          class="inline-flex flex-col items-center rounded-full px-2 py-1 text-center font-medium leading-tight {badgeClass}"
+                          title={badgeText}
+                        >
+                          <span class="whitespace-nowrap">access denied,</span>
+                          <span class="whitespace-nowrap">torrents limit reached</span>
+                        </span>
+                      {:else}
+                        <span
+                          class="inline-block max-w-full overflow-hidden text-ellipsis whitespace-nowrap rounded-full px-1.5 py-0.5 font-medium {badgeClass}"
+                          title={badgeText}
+                        >
+                          {badgeText}
+                        </span>
+                      {/if}
                     {:else if col.key === 'activeSeeders'}
                       <div class="flex items-center justify-center gap-1.5">
                         <SeedsTooltip

@@ -115,9 +115,9 @@ $effect(() => {
     }
   };
 
-  document.addEventListener('click', handleDocumentClick);
+  document.addEventListener('click', handleDocumentClick, { capture: true });
   return () => {
-    document.removeEventListener('click', handleDocumentClick);
+    document.removeEventListener('click', handleDocumentClick, { capture: true });
   };
 });
 
