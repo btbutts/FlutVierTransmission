@@ -27,7 +27,7 @@ export const defaultColumns: ColumnConfig[] = [
   // Optional columns (hidden by default; user toggles via the Columns dropdown)
   { key: 'private',       label: 'Private',  width: '72px',  minWidth: '60px',  align: 'center', headerAlign: 'center', sortable: true, resizable: true, isVisible: false },
   { key: 'ul',            label: 'UL',       width: '96px',  minWidth: '72px',  align: 'center', headerAlign: 'center', sortable: true, resizable: true, isVisible: false },
-  { key: 'activeSeeders', label: 'Seeds',    width: '80px',  minWidth: '64px',  align: 'center', headerAlign: 'center', sortable: true, resizable: true, isVisible: false },
+  { key: 'activeSeeders', label: 'Seeds',    width: '110px', minWidth: '96px',  align: 'center', headerAlign: 'center', sortable: true, resizable: true, isVisible: false },
   { key: 'added',         label: 'Added',    width: '112px', minWidth: '80px',  align: 'center', headerAlign: 'center', sortable: true, resizable: true, isVisible: false },
   { key: 'basePath',      label: 'Path',     width: '200px', minWidth: '120px', align: 'left',   headerAlign: 'center', sortable: true, resizable: true, isVisible: false },
   { key: 'done',          label: 'Done',     width: '112px', minWidth: '80px',  align: 'center', headerAlign: 'center', sortable: true, resizable: true, isVisible: false },

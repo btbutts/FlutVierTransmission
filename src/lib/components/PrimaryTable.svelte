@@ -14,6 +14,7 @@ import {
 } from '$lib';
 
 import DDSelector from '$lib/components/DDSelector.svelte';
+import SeedsTooltip from '$lib/components/SeedsTooltip.svelte';
 import { defaultColumns, type ColumnConfig } from '$lib/config/columns';
 import { formatBytes, formatSpeed } from '$lib/helpers';
 import { Delete, Pause, Play } from '$lib/plugins';
@@ -194,7 +195,7 @@ function getDisplayValue(t: Torrent, key: string): string {
     case 'eta':           return t.eta < 0 ? '—' : `${Math.round(t.eta / 60)}m`;
     case 'private':       return t.isPrivate ? '✓' : '✗';
     case 'ul':            return formatSpeed(t.rateUpload ?? 0);
-    case 'activeSeeders': return t.peersSendingToUs?.toString() ?? '—';
+    case 'activeSeeders': return `${t.peersSendingToUs ?? 0} : ${maxSeedersFor(t) >= 0 ? maxSeedersFor(t) : '—'}`;
     case 'added':         return t.addedDate ? new Date(t.addedDate * 1000).toLocaleDateString() : '—';
     case 'basePath':      return t.downloadDir ?? '—';
     case 'done':          return t.doneDate ? new Date(t.doneDate * 1000).toLocaleDateString() : '—';
@@ -249,6 +250,11 @@ function statusText(status: number, err: number, errString?: string): string {
     6: 'Seeding'
   };
   return map[status] ?? 'Unknown';
+}
+
+function maxSeedersFor(t: Torrent): number {
+  if (!t.trackerStats || t.trackerStats.length === 0) return -1;
+  return Math.max(...t.trackerStats.map((ts) => ts.seederCount));
 }
 
 function toggleSort(key: string) {
@@ -473,6 +479,20 @@ function openFiles(t: Torrent) {
                       >
                         {statusText(torrent.status, torrent.error, torrent.errorString)}
                       </span>
+                    {:else if col.key === 'activeSeeders'}
+                      <div class="flex items-center justify-center gap-1.5">
+                        <SeedsTooltip
+                          torrentId={torrent.id}
+                          seederCount={torrent.peersSendingToUs ?? 0}
+                          maxSeeders={maxSeedersFor(torrent)}
+                          trackerStats={torrent.trackerStats ?? []}
+                        />
+                        <span class="whitespace-nowrap tabular-nums">
+                          {torrent.peersSendingToUs ?? 0}&nbsp;:&nbsp;{maxSeedersFor(torrent) >= 0
+                            ? maxSeedersFor(torrent)
+                            : '—'}
+                        </span>
+                      </div>
                     {:else}
                       <div
                         class="block truncate overflow-hidden whitespace-nowrap {{

@@ -26,7 +26,7 @@ const torrentFields = [
   'uploadedEver', 'downloadedEver', 'error', 'errorString',
   // Additional optional fields
   'isPrivate', 'addedDate', 'doneDate', 'queuePosition', 'seedRatio',
-  'peersSendingToUs', 'peersGettingFromUs', 'trackers'
+  'peersSendingToUs', 'peersGettingFromUs', 'trackers', 'trackerStats'
 ] as const;
 
 export async function refreshAll() {
@@ -238,6 +238,19 @@ export async function addTorrentMetainfoForSelect(
   const entry = res['torrent-added'] ?? res['torrent-duplicate'];
   if (!entry) throw new Error('torrent-add returned no torrent entry');
   return { id: entry.id, name: entry.name, isDuplicate: !!res['torrent-duplicate'] };
+}
+
+/**
+ * Fetch the live peer list for a single torrent on demand (e.g., on tooltip hover).
+ * Returns both seeders (isDownloadingFrom === true) and leechers (isUploadingTo === true)
+ * so callers can use whichever subset they need.
+ */
+export async function fetchTorrentPeers(id: number): Promise<import('./types').Peer[]> {
+  const res = await callRpc<{ torrents: Array<{ peers?: import('./types').Peer[] }> }>(
+    'torrent-get',
+    { ids: [id], fields: ['peers'] }
+  );
+  return res.torrents?.[0]?.peers ?? [];
 }
 
 /**

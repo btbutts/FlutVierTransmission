@@ -2,6 +2,52 @@
 // Transmission RPC torrent object shape (based on official RPC spec)
 // We only define the fields we're currently using; expand as we add more UI features
 
+export interface TrackerStat {
+  seederCount: number;
+  leecherCount: number;
+  lastAnnounceSucceeded: boolean;
+  lastAnnounceTime: number;    // Unix/POSIX timestamp (seconds)
+  nextAnnounceTime: number;    // Unix/POSIX timestamp (seconds)
+  announce: string;
+  downloadCount: number;
+  hasAnnounced: boolean;
+  hasScraped: boolean;
+  host: string;
+  id: number;
+  isBackup: boolean;
+  lastAnnouncePeerCount: number;
+  lastAnnounceResult: string;
+  lastAnnounceStartTime: number;
+  lastAnnounceTimedOut: boolean;
+  lastScrapeResult: string;
+  lastScrapeStartTime: number;
+  lastScrapeSucceeded: boolean;
+  lastScrapeTime: number;
+  lastScrapeTimedOut: boolean;
+  nextScrapeTime: number;
+  scrapeState: number;
+  tier: number;
+}
+
+export interface Peer {
+  address: string;
+  clientName: string;
+  clientIsChoked: boolean;
+  clientIsInterested: boolean;
+  flagStr: string;
+  isDownloadingFrom: boolean;   // true = this peer is sending data TO us (seeder)
+  isEncrypted: boolean;
+  isIncoming: boolean;
+  isUploadingTo: boolean;       // true = we are sending data TO this peer (leecher)
+  isUTP: boolean;
+  peerIsChoked: boolean;
+  peerIsInterested: boolean;
+  port: number;
+  progress: number;
+  rateToClient: number;         // bytes/sec download from this peer
+  rateToPeer: number;           // bytes/sec upload to this peer
+}
+
 export interface File {
   bytes: number;
   name: string;
@@ -36,6 +82,8 @@ export interface Torrent {
   peersSendingToUs?: number;    // Leechers (we're seeding to)
   peersGettingFromUs?: number;  // Active seeders (downloading from)
   trackers?: Array<{ announce: string }>;
+  trackerStats?: TrackerStat[];
+  peers?: Peer[];
   // files and fileStats are more complex;
   // we'll handle them later when we add per-torrent file view
   files?: File[];

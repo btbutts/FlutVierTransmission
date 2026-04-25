@@ -17,6 +17,7 @@
 		"@eslint/compat": "^2.0.3",
 		"@eslint/js": "^10.0.1",
 		"@ianvs/prettier-plugin-sort-imports": "^4.7.1",
+		"@iconify-json/flagpack": "^1.2.7",
 		"@iconify-json/mdi": "^1.2.3",
 		"@sveltejs/adapter-auto": "^7.0.0",
 		"@sveltejs/kit": "^2.50.2",
@@ -43,6 +44,7 @@
 	},
 	"dependencies": {
 		"@fontsource-variable/inter": "^5.2.8",
-		"@fontsource/inter": "^5.2.8"
+		"@fontsource/inter": "^5.2.8",
+		"@iconify/svelte": "^5.2.1"
 	}
 }
