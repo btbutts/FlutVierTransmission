@@ -71,31 +71,71 @@ interface QueueItem {
   filePriorities: Record<number, number>; // fileIndex → priority (-2 skip, -1 low, 0 normal, 1 high)
   start: boolean; // per-torrent "start on confirm" checkbox
   completedAt: number; // epoch ms when status → ready; 0 = not yet complete
+  finalized: boolean; // true after this item has been confirmed via handleAdd; excluded from cleanup + display
 }
 
 // ── Reactive State ─────────────────────────────────────────────────────────────
 let queue = $state<QueueItem[]>([]);
 let isFinalizing = $state(false);
+let flashHighlight = $state(false);
 
 // Non-reactive — mutated imperatively, not read in templates:
 let abort: AbortController | null = null;
-let confirmed = false;
+let flashTimerRef: ReturnType<typeof setTimeout> | null = null;
+
+// ── Actionability helpers ───────────────────────────────────────────────────────
+// An item can be finalized right now if it has enough information to act on:
+//   .torrent file → fully ready (single RPC fetch, completes quickly)
+//   magnet link   → at least 1% metadata received from peers
+// Used by both canAdd and handleAdd.
+function isActionableNow(item: QueueItem): boolean {
+  if (item.type === 'file') return item.status === 'ready';
+  return item.transmissionId !== undefined && item.metadataProgress >= 0.01;
+}
+
+// A per-torrent checkbox is interactive (not locked) when the item is meaningful:
+//   .torrent file → always (metadata was already local at open time)
+//   magnet link   → once at least 1% of peer metadata has downloaded
+function isCheckboxEnabled(item: QueueItem): boolean {
+  if (item.type === 'file') return true;
+  return item.metadataProgress >= 0.01;
+}
 
 // ── Derived ────────────────────────────────────────────────────────────────────
-// All items have finished (successfully or with an error) — enables the Add button.
-const allSettled = $derived(
-  queue.length > 0 && queue.every((item) => item.status === 'ready' || item.status === 'error')
-);
-
-const totalItems = $derived(queue.length);
+// Unfinalized item count — drives "Start Torrent/s" and "Add Torrent/s" labels.
+const totalItems = $derived(queue.filter((item) => !item.finalized).length);
 
 const startLabel = $derived(totalItems > 1 ? 'Start Torrents' : 'Start Torrent');
 
-// Ready items appear first, sorted by completion time (first-received = first-shown).
-// Items still processing appear below in their original order.
+// How many items handleAdd will process on the next click — drives button label.
+const actionableCount = $derived(
+  queue.filter((item) => !item.finalized && isActionableNow(item)).length
+);
+
+// The "+ Add Torrent" button is enabled when:
+//  • Not currently finalizing, AND
+//  • At least one non-finalized item has an unlocked checkbox that is checked.
+// Scenarios:
+//  1 (magnets only)  — locked until a magnet hits ≥1% AND the user checks it.
+//  2 (.torrent only) — immediately enabled (.torrent checkboxes are never locked,
+//                      start defaults to true).
+//  3 (mixed)         — immediately enabled because of the .torrent files.
+const canAdd = $derived(
+  !isFinalizing && queue.some((item) => !item.finalized && isCheckboxEnabled(item) && item.start)
+);
+
+// True when at least one non-finalized magnet has not yet reached 1% metadata download.
+// Drives the hint message visibility and the flash animation trigger.
+const hasStuckMagnets = $derived(
+  queue.some((item) => !item.finalized && item.type === 'magnet' && item.metadataProgress < 0.01)
+);
+
+// Finalized items leave the list immediately; ready items sort first by completion time.
 const displayQueue = $derived([
-  ...queue.filter((item) => item.status === 'ready').sort((a, b) => a.completedAt - b.completedAt),
-  ...queue.filter((item) => item.status !== 'ready')
+  ...queue
+    .filter((item) => item.status === 'ready' && !item.finalized)
+    .sort((a, b) => a.completedAt - b.completedAt),
+  ...queue.filter((item) => item.status !== 'ready' && !item.finalized)
 ]);
 
 // ── Queue Building ─────────────────────────────────────────────────────────────
@@ -115,7 +155,8 @@ function buildQueue(): QueueItem[] {
       files: [],
       filePriorities: {},
       start: startTorrent,
-      completedAt: 0
+      completedAt: 0,
+      finalized: false
     });
   }
 
@@ -133,7 +174,8 @@ function buildQueue(): QueueItem[] {
       files: [],
       filePriorities: {},
       start: startTorrent,
-      completedAt: 0
+      completedAt: 0,
+      finalized: false
     });
   }
 
@@ -235,12 +277,41 @@ function sortedFiles(raw: Array<{ name: string; length: number }>): FileEntry[] 
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
+// ── Flash animation ────────────────────────────────────────────────────────────
+// Pulses the hint message color between default and blue-500 for 3 cycles,
+// each 1000ms (500ms per half-step), with CSS transitions doing the smooth fade.
+function triggerFlash() {
+  // Cancel any in-progress flash before starting fresh.
+  if (flashTimerRef !== null) {
+    clearTimeout(flashTimerRef);
+    flashTimerRef = null;
+    flashHighlight = false;
+  }
+
+  const HALF_CYCLE_MS = 500; // half of the 1000ms-per-cycle the user specified
+  let step = 0;
+  const TOTAL_STEPS = 6; // 3 cycles × 2 half-steps (on + off)
+
+  function tick() {
+    step++;
+    flashHighlight = step % 2 !== 0; // odd steps = blue, even steps = default
+    if (step < TOTAL_STEPS) {
+      flashTimerRef = setTimeout(tick, HALF_CYCLE_MS);
+    } else {
+      flashTimerRef = null;
+    }
+  }
+
+  tick(); // step 1: immediately set blue, then alternate every 500ms
+}
+
 // ── Cleanup ────────────────────────────────────────────────────────────────────
-// Reads queue IDs without creating a reactive dependency (safe to call from $effect).
+// Reads non-finalized, non-duplicate IDs without creating a reactive dependency.
+// finalized items have already been confirmed by handleAdd and must not be removed.
 function getAddedIds(): number[] {
   return untrack(() =>
     queue
-      .filter((item) => item.transmissionId !== undefined && !item.isDuplicate)
+      .filter((item) => item.transmissionId !== undefined && !item.isDuplicate && !item.finalized)
       .map((item) => item.transmissionId!)
   );
 }
@@ -282,11 +353,12 @@ $effect(() => {
 // user cancels from the master modal while the child card is still active).
 onDestroy(() => {
   abort?.abort();
-  if (!confirmed) {
-    const idsToRemove = getAddedIds();
-    if (idsToRemove.length > 0) {
-      void removeTorrents(idsToRemove, false).catch(() => {});
-    }
+  if (flashTimerRef !== null) clearTimeout(flashTimerRef);
+  // getAddedIds() already excludes finalized and duplicate IDs, so items that
+  // were partially confirmed (scenario 3) are not removed on destroy.
+  const idsToRemove = getAddedIds();
+  if (idsToRemove.length > 0) {
+    void removeTorrents(idsToRemove, false).catch(() => {});
   }
 });
 
@@ -299,38 +371,62 @@ $effect(() => {
   const s = startTorrent;
   untrack(() => {
     for (const item of queue) {
-      item.start = s;
+      if (!item.finalized) item.start = s;
     }
   });
 });
 
 // ── Add / Finalize ─────────────────────────────────────────────────────────────
 async function handleAdd() {
-  if (isFinalizing || !allSettled) return;
+  if (isFinalizing || !canAdd) return;
   isFinalizing = true;
 
-  const readyItems = queue.filter(
-    (item) => item.status === 'ready' && item.transmissionId !== undefined
-  );
+  // Only process items that are actionable right now:
+  //   .torrent files that are fully ready, or magnets with ≥1% metadata.
+  // Magnets still at 0% are left in-queue and the modal stays open for them.
+  const toFinalize = queue.filter((item) => !item.finalized && isActionableNow(item));
 
   try {
-    for (const item of readyItems) {
-      // Apply any non-default file priorities the user configured.
-      if (Object.keys(item.filePriorities).length > 0) {
-        await updateFilePriorities(item.transmissionId!, item.filePriorities);
+    for (const item of toFinalize) {
+      if (item.transmissionId !== undefined) {
+        // Apply any file priority overrides the user configured (ready items only —
+        // partial-metadata magnets keep the default Transmission priority until
+        // the user gets a second chance to configure them).
+        if (item.status === 'ready' && Object.keys(item.filePriorities).length > 0) {
+          await updateFilePriorities(item.transmissionId, item.filePriorities);
+        }
+
+        // Respect the per-torrent "start on confirm" checkbox.
+        // .torrent files were added paused; completed magnets were stopped after
+        // metadata fetch. Partial-metadata magnets are already running (paused: false)
+        // so startTorrents() for them is a no-op — harmless either way.
+        if (item.start) {
+          await startTorrents([item.transmissionId]);
+        }
       }
 
-      // Start or leave paused/stopped based on the per-torrent checkbox.
-      // .torrent files were added paused; magnets were stopped after metadata fetch.
-      // Neither is running at this point unless the user's checkbox is checked.
-      if (item.start) {
-        await startTorrents([item.transmissionId!]);
-      }
+      // Marks the item confirmed: removes it from displayQueue and from cleanup.
+      item.finalized = true;
     }
 
-    confirmed = true;
-    await refreshAll();
-    onDone();
+    // Check whether any non-error items are still pending (scenario 3 partial).
+    const stillPending = queue.filter((item) => !item.finalized && item.status !== 'error');
+
+    if (stillPending.length === 0) {
+      // All done — close the modal.
+      await refreshAll();
+      onDone();
+    } else {
+      // Some magnets still have 0% metadata. Keep the modal open so the user
+      // can configure them once their metadata arrives. Refresh in the background
+      // so the main torrent list reflects the items we just confirmed.
+      void refreshAll().catch(() => {});
+      isFinalizing = false;
+      // Flash the hint message to draw attention to the stuck magnets.
+      if (stillPending.some((item) => item.type === 'magnet' && item.metadataProgress < 0.01)) {
+        triggerFlash();
+      }
+    }
   } catch (err: unknown) {
     error.set(err instanceof Error ? err.message : 'Failed to finalize torrents');
     isFinalizing = false;
@@ -351,8 +447,30 @@ async function handleAdd() {
   style="box-shadow: 0 0 0 1px rgba(0,0,0,0.15), 0 0 40px 16px rgba(0,0,0,0.65), 0 0 120px 60px rgba(0,0,0,0.5)"
 >
   <!-- ── Header: title left, Backburger back button right ─────────────────── -->
-  <div class="flex flex-shrink-0 items-center justify-between px-8 pt-8 pb-4">
-    <h2 class="text-ColorPalette-text-secondary text-2xl font-bold">Choose Torrent Files</h2>
+  <!--
+    items-start keeps the back button aligned with the top of the title column
+    when the hint message is present.
+  -->
+  <div class="flex flex-shrink-0 items-start justify-between px-8 pt-8 pb-4">
+    <div class="flex flex-col gap-1">
+      <h2 class="text-ColorPalette-text-secondary text-2xl font-bold">Choose Torrent Files</h2>
+      <!--
+        Shown only while at least one magnet link has not yet reached 1% metadata.
+        When the user clicks "+ Add Torrents" with stuck magnets remaining, triggerFlash()
+        pulses the color between text-ColorPalette-text-tertiary and text-blue-500
+        for 3 × 1000ms cycles (500ms per half-step) via CSS color transitions.
+      -->
+      {#if hasStuckMagnets}
+        <p
+          class="{flashHighlight
+            ? 'text-blue-500'
+            : 'text-ColorPalette-text-tertiary'} text-xs transition-colors duration-[500ms]"
+        >
+          Magnet Links can only be saved<br />
+          after metadata begins downloading
+        </p>
+      {/if}
+    </div>
     <button
       type="button"
       onclick={onBack}
@@ -390,11 +508,15 @@ async function handleAdd() {
           <!-- ── Torrent row ─────────────────────────────────────────────── -->
           <div>
             <div class="flex min-w-0 items-center gap-2 py-1">
-              <!-- Per-torrent start/do-not-start checkbox -->
+              <!-- Per-torrent start/do-not-start checkbox.
+                   Locked for magnet links until at least 1% of peer metadata
+                   has downloaded — prevents confirming a torrent that hasn't
+                   yet established contact with any tracker or peer. -->
               <input
                 type="checkbox"
                 bind:checked={item.start}
-                class="text-ColorPalette-modal-TxtAccent-secondary h-4 w-4 flex-shrink-0 rounded border-gray-300 focus:ring-blue-500 focus:outline-none"
+                disabled={item.type === 'magnet' && item.metadataProgress < 0.01}
+                class="text-ColorPalette-modal-TxtAccent-secondary h-4 w-4 flex-shrink-0 rounded border-gray-300 focus:ring-blue-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-40"
               />
 
               <!-- Torrent display name -->
@@ -483,8 +605,8 @@ async function handleAdd() {
     <div class="flex space-x-3">
       <AddTorrentButton
         onclick={handleAdd}
-        disabled={!allSettled || isFinalizing}
-        label="Add Torrent{totalItems > 1 ? 's' : ''}"
+        disabled={!canAdd}
+        label="Add Torrent{actionableCount !== 1 ? 's' : ''}"
         class="inline-flex flex-1 items-center justify-center gap-2 rounded-md bg-blue-600 px-4 py-2 font-medium text-white shadow-sm transition-all hover:bg-blue-700 disabled:opacity-50"
       />
       <button

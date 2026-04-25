@@ -105,7 +105,7 @@ async function savePriorities() {
             <tr>
               <th class="p-3 text-left font-medium">Name</th>
               <th class="p-3 text-center font-medium">Size</th>
-              <th class="p-3 text-center font-medium">% Done</th>
+              <th class="p-3 text-center font-medium">Progress</th>
               <th class="p-3 text-center font-medium">Priority</th>
             </tr>
           </thead>
@@ -118,11 +118,11 @@ async function savePriorities() {
                   <td class="p-3 text-center">{formatBytes(file.length)}</td>
                   <td class="p-3 text-center">
                     <div
-                      class="relative mx-auto h-6 w-28 overflow-hidden rounded-2xl border border-gray-200/50 bg-gray-200/90 shadow-sm dark:border-gray-700/50 dark:bg-gray-700/90"
+                      class="relative mx-auto h-6 w-28 overflow-hidden rounded-2xl border border-gray-200/50 bg-gray-200/90 shadow-sm dark:border-gray-700/50 dark:bg-gray-300/90"
                     >
                       <!-- Progress Fill (absolute, behind text) -->
                       <div
-                        class="absolute top-0 left-0 h-full rounded-2xl bg-gradient-to-r from-green-500 to-green-600 shadow-inner transition-all duration-500 dark:from-green-600 dark:to-green-700"
+                        class="absolute top-0 left-0 h-full rounded-2xl bg-gradient-to-r from-green-500 to-green-600 shadow-inner transition-all duration-500 dark:from-green-700 dark:to-green-500"
                         style="width: {((stat.bytesCompleted / file.length) * 100).toFixed(1)}%"
                       ></div>
                       <!-- Percentage Text (absolute overlay, centered) -->
