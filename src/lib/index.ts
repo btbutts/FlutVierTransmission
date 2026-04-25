@@ -25,8 +25,13 @@ export {
     addTorrentForSelect,
     addTorrentMetainfoForSelect,
     getTorrentFilesList,
-    fetchTorrentPeers
+    fetchTorrentPeers,
+    seedsTooltipStore,
+    showSeedsTooltip,
+    hideSeedsTooltip,
+    cancelHideSeedsTooltip
 } from './stores';
 export type { Torrent } from './types';
+export type { SeedsTooltipState } from './stores';
 export type { DropdownOption } from './components/dropdown.svelte';
 export { windowPopUp } from './helpers';

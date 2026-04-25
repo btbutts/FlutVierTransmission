@@ -4,7 +4,7 @@
 import { writable } from 'svelte/store';
 
 import { callRpc, ensureSessionId } from './rpc';
-import type { Torrent } from './types';
+import type { Torrent, TrackerStat } from './types';
 
 // Shared layout min-width: set by page.svelte (sidebar + table), read by layout.svelte
 export const layoutMinWidth = writable('100%');
@@ -275,4 +275,43 @@ export async function getTorrentFilesList(id: number): Promise<{
     fields: ['id', 'name', 'metadataPercentComplete', 'files']
   });
   return res.torrents?.[0] ?? null;
+}
+
+// ─── Seeds Tooltip Portal Store ───────────────────────────────────────────────
+
+export interface SeedsTooltipState {
+  torrentId: number;
+  seederCount: number;
+  maxSeeders: number;
+  trackerStats: TrackerStat[];
+  x: number;
+  y: number;
+  above: boolean;
+}
+
+// null = tooltip hidden; non-null = visible with those coordinates + data
+export const seedsTooltipStore = writable<SeedsTooltipState | null>(null);
+
+let _seedsHideTimer: ReturnType<typeof setTimeout> | null = null;
+
+export function showSeedsTooltip(data: SeedsTooltipState) {
+  if (_seedsHideTimer) {
+    clearTimeout(_seedsHideTimer);
+    _seedsHideTimer = null;
+  }
+  seedsTooltipStore.set(data);
+}
+
+export function hideSeedsTooltip() {
+  _seedsHideTimer = setTimeout(() => {
+    seedsTooltipStore.set(null);
+    _seedsHideTimer = null;
+  }, 150);
+}
+
+export function cancelHideSeedsTooltip() {
+  if (_seedsHideTimer) {
+    clearTimeout(_seedsHideTimer);
+    _seedsHideTimer = null;
+  }
 }
