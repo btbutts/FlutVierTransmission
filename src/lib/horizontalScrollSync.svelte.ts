@@ -18,7 +18,11 @@ export function createHorizontalScrollSync() {
   // $store auto-subscription syntax is component-only; subscribe manually in .svelte.ts.
   // store.subscribe() returns its unsubscribe fn, which $effect accepts as cleanup.
   let _layoutMinWidth = $state('0px');
-  $effect(() => layoutMinWidth.subscribe(val => { _layoutMinWidth = val; }));
+  $effect(() =>
+    layoutMinWidth.subscribe((val) => {
+      _layoutMinWidth = val;
+    })
+  );
 
   // Spacer width creates the same scroll range as <main>.
   // Derivation: spacerWidth = mainLeftPad(280) - sidebarWidth(256) + mainRightPad(24) + minTableWidth
@@ -27,7 +31,7 @@ export function createHorizontalScrollSync() {
 
   $effect(() => {
     if (!mainEl || !syncScrollEl) return;
-    const main = mainEl;   // HTMLElement (narrowed — closures see non-null type)
+    const main = mainEl; // HTMLElement (narrowed — closures see non-null type)
     const sync = syncScrollEl;
     let busy = false;
 
@@ -62,10 +66,20 @@ export function createHorizontalScrollSync() {
   });
 
   return {
-    get mainEl() { return mainEl; },
-    set mainEl(el: HTMLElement | null) { mainEl = el; },
-    get syncScrollEl() { return syncScrollEl; },
-    set syncScrollEl(el: HTMLElement | null) { syncScrollEl = el; },
-    get syncScrollerWidth() { return syncScrollerWidth; },
+    get mainEl() {
+      return mainEl;
+    },
+    set mainEl(el: HTMLElement | null) {
+      mainEl = el;
+    },
+    get syncScrollEl() {
+      return syncScrollEl;
+    },
+    set syncScrollEl(el: HTMLElement | null) {
+      syncScrollEl = el;
+    },
+    get syncScrollerWidth() {
+      return syncScrollerWidth;
+    }
   };
 }

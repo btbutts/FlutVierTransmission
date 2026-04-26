@@ -124,7 +124,10 @@ function handleGroupEnter() {
 
   if (_recentMode === mode) {
     // Same column as recently activated — cancel any pending clear and skip the delay.
-    if (_recentModeTimer) { clearTimeout(_recentModeTimer); _recentModeTimer = null; }
+    if (_recentModeTimer) {
+      clearTimeout(_recentModeTimer);
+      _recentModeTimer = null;
+    }
     if (!buttonOpacity) fadeIn();
   }
   // If not recently activated, do nothing — handleTextEnter handles the delay.

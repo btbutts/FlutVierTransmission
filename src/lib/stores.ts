@@ -25,7 +25,7 @@ const torrentFields = [
   'rateDownload', 'rateUpload', 'eta', 'downloadDir', 'files', 'fileStats',
   'uploadedEver', 'downloadedEver', 'error', 'errorString',
   // Additional optional fields
-  'isPrivate', 'addedDate', 'doneDate', 'queuePosition', 'seedRatio',
+  'isPrivate', 'addedDate', 'doneDate', 'queuePosition', 'uploadRatio',
   'peersSendingToUs', 'peersGettingFromUs', 'trackers', 'trackerStats'
 ] as const;
 

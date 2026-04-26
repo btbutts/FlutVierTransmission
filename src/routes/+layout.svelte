@@ -13,8 +13,8 @@ import {
 
 import AddTorrentButton from '$lib/components/AddTorrentButton.svelte';
 import AddTorrentMasterModal from '$lib/components/AddTorrentMasterModal.svelte';
-import RefreshButton from '$lib/components/RefreshButton.svelte';
 import PeersTooltipPortal from '$lib/components/PeersTooltipPortal.svelte';
+import RefreshButton from '$lib/components/RefreshButton.svelte';
 import SettingsButton from '$lib/components/SettingsButton.svelte';
 import SettingsModal from '$lib/components/SettingsModal.svelte';
 import { createHorizontalScrollSync } from '$lib/horizontalScrollSync.svelte';
@@ -70,7 +70,9 @@ $effect(() => {
       </div>
       <div class="flex items-center space-x-2">
         <AddTorrentButton
-          onclick={() => { addTorrentModalOpen = true; }}
+          onclick={() => {
+            addTorrentModalOpen = true;
+          }}
           disabled={$isLoading}
           class="flex items-center space-x-2 rounded-md bg-blue-600 px-4 py-2 text-sm text-nowrap text-white shadow-sm hover:bg-blue-800"
         />

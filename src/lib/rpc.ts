@@ -22,7 +22,7 @@ export async function callRpc<T = unknown>(
 
   const body: RpcRequest = {
     method,
-    arguments: args   // always include arguments key (even if empty object)
+    arguments: args // always include arguments key (even if empty object)
   };
 
   const makeRequest = async (sid?: string) => {
@@ -34,7 +34,7 @@ export async function callRpc<T = unknown>(
     return fetch(url, {
       method: 'POST',
       headers,
-      body: JSON.stringify(body)   // clean stringify, no extra whitespace issues
+      body: JSON.stringify(body) // clean stringify, no extra whitespace issues
     });
   };
 
@@ -43,7 +43,7 @@ export async function callRpc<T = unknown>(
   // Handle 409 - get new session ID and retry **once**
   if (res.status === 409) {
     sessionId = res.headers.get('X-Transmission-Session-Id') || '';
-    
+
     if (!sessionId) {
       throw new Error('Failed to get Transmission session ID');
     }
@@ -75,7 +75,7 @@ export async function ensureSessionId(): Promise<void> {
     const res = await fetch(url, {
       method: 'POST',
       headers,
-      body: JSON.stringify({ method: 'session-get', arguments: {} })  // Dummy valid request
+      body: JSON.stringify({ method: 'session-get', arguments: {} }) // Dummy valid request
     });
     if (res.status === 409) {
       sessionId = res.headers.get('X-Transmission-Session-Id') || '';

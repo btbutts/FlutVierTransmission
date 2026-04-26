@@ -78,7 +78,7 @@ export interface Torrent {
   addedDate?: number;
   doneDate?: number;
   queuePosition?: number;
-  seedRatio?: number;
+  uploadRatio?: number;
   peersSendingToUs?: number; // Leechers (we're seeding to)
   peersGettingFromUs?: number; // Active seeders (downloading from)
   trackers?: Array<{ announce: string }>;

@@ -23,7 +23,26 @@ import Refresh from '~icons/mdi/refresh';
 import TimerEdit from '~icons/mdi/timer-edit';
 import Wan from '~icons/mdi/wan';
 
-export { Play, Pause, Delete, Refresh, Plus, Cogs, Cog, Check, Close, Backburger, FileFind, Forwardburger, InformationVariantCircleOutline, Loading, TimerEdit, LanCheck, LanDisconnect, Wan };
+export {
+  Play,
+  Pause,
+  Delete,
+  Refresh,
+  Plus,
+  Cogs,
+  Cog,
+  Check,
+  Close,
+  Backburger,
+  FileFind,
+  Forwardburger,
+  InformationVariantCircleOutline,
+  Loading,
+  TimerEdit,
+  LanCheck,
+  LanDisconnect,
+  Wan
+};
 
 // Special export object to select icons by name for
 // dropdown status indicators next to its selected options

@@ -17,7 +17,7 @@ import DDSelector from '$lib/components/DDSelector.svelte';
 import PeersCellContent from '$lib/components/PeersCellContent.svelte';
 import { defaultColumns, type ColumnConfig } from '$lib/config/columns';
 import { formatBytes, formatEta, formatSpeed } from '$lib/helpers';
-import { Delete, Pause, Play } from '$lib/plugins';
+import { Check, Close, Delete, Pause, Play } from '$lib/plugins';
 
 let sortKey = $state<string>('name');
 let sortDir = $state<'asc' | 'desc'>('asc');
@@ -199,7 +199,7 @@ function getDisplayValue(t: Torrent, key: string): string {
     case 'totalSize':     return formatBytes(t.totalSize);
     case 'rateDownload':  return formatSpeed(t.rateDownload);
     case 'eta':           return t.eta < 0 ? '—' : formatEta(t.eta);
-    case 'private':       return t.isPrivate ? '✓' : '✗';
+    case 'private':       return '';
     case 'ul':            return formatSpeed(t.rateUpload ?? 0);
     case 'activeSeeders': return `${t.peersSendingToUs ?? 0} : ${maxSeedersFor(t) >= 0 ? maxSeedersFor(t) : '—'}`;
     case 'added':         return t.addedDate ? new Date(t.addedDate * 1000).toLocaleDateString() : '—';
@@ -207,7 +207,7 @@ function getDisplayValue(t: Torrent, key: string): string {
     case 'done':          return t.doneDate ? new Date(t.doneDate * 1000).toLocaleDateString() : '—';
     case 'error':         return t.errorString ?? '—';
     case 'queuePos':      return t.queuePosition?.toString() ?? '—';
-    case 'seedRatio':     return t.seedRatio ? t.seedRatio.toFixed(2) : '—';
+    case 'seedRatio':     return t.uploadRatio ? t.uploadRatio.toFixed(2) : '—';
     case 'leechers':      return `${t.peersGettingFromUs ?? 0} : ${maxLeechersFor(t) >= 0 ? maxLeechersFor(t) : '—'}`;
     case 'trackers':      return (t.trackers ?? []).map(tr => tr.announce.split('/')[2]).filter(Boolean).join(', ') || '—';
     default:              return '';
@@ -230,7 +230,7 @@ function getSortValue(t: Torrent, key: string): string | number {
     case 'done':          return t.doneDate ?? 0;
     case 'error':         return (t.errorString ?? '').toLowerCase();
     case 'queuePos':      return t.queuePosition ?? Infinity;
-    case 'seedRatio':     return t.seedRatio ?? 0;
+    case 'seedRatio':     return t.uploadRatio ?? 0;
     case 'leechers':      return t.peersGettingFromUs ?? 0;
     case 'trackers':      return (t.trackers ?? []).length;
     default:              return t.name.toLowerCase();
@@ -519,11 +519,15 @@ function openFiles(t: Torrent) {
                         title={torrent.name}>{getDisplayValue(torrent, col.key)}</span
                       >
                     {:else if col.key === 'status'}
-                      {@const badgeText = statusText(torrent.status, torrent.error, torrent.errorString)}
+                      {@const badgeText = statusText(
+                        torrent.status,
+                        torrent.error,
+                        torrent.errorString
+                      )}
                       {@const badgeClass = statusClass(torrent.status, torrent.error)}
                       {#if badgeText.toLowerCase() === 'access denied, torrents limit reached'}
                         <span
-                          class="inline-flex flex-col items-center rounded-full px-2 py-1 text-center font-medium leading-tight {badgeClass}"
+                          class="inline-flex flex-col items-center rounded-full px-2 py-1 text-center leading-tight font-medium {badgeClass}"
                           title={badgeText}
                         >
                           <span class="whitespace-nowrap">access denied,</span>
@@ -531,7 +535,7 @@ function openFiles(t: Torrent) {
                         </span>
                       {:else}
                         <span
-                          class="inline-block max-w-full overflow-hidden text-ellipsis whitespace-nowrap rounded-full px-1.5 py-0.5 font-medium {badgeClass}"
+                          class="inline-block max-w-full overflow-hidden rounded-full px-1.5 py-0.5 font-medium text-ellipsis whitespace-nowrap {badgeClass}"
                           title={badgeText}
                         >
                           {badgeText}
@@ -556,6 +560,14 @@ function openFiles(t: Torrent) {
                           trackerStats={torrent.trackerStats ?? []}
                           mode="leechers"
                         />
+                      </div>
+                    {:else if col.key === 'private'}
+                      <div class="flex items-center justify-center">
+                        {#if torrent.isPrivate}
+                          <Check class="h-[1.1em] w-[1.1em]" />
+                        {:else}
+                          <Close class="h-[1.1em] w-[1.1em]" />
+                        {/if}
                       </div>
                     {:else}
                       <div
