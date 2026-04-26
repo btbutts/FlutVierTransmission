@@ -5,6 +5,7 @@ import {
   error,
   isLoading,
   performActionAndRefresh,
+  pollBandwidth,
   refreshAll,
   selectedTorrents,
   torrents,
@@ -13,6 +14,7 @@ import {
 
 import AddTorrentButton from '$lib/components/AddTorrentButton.svelte';
 import AddTorrentMasterModal from '$lib/components/AddTorrentMasterModal.svelte';
+import BandwidthGraph from '$lib/components/BandwidthGraph.svelte';
 import PeersTooltipPortal from '$lib/components/PeersTooltipPortal.svelte';
 import RefreshButton from '$lib/components/RefreshButton.svelte';
 import SettingsButton from '$lib/components/SettingsButton.svelte';
@@ -47,7 +49,15 @@ $effect(() => {
   // Auto-refresh every 20s
   refreshAll();
   const interval = setInterval(refreshAll, 20000);
-  return () => clearInterval(interval);
+
+  // Bandwidth polling every 1s (starts immediately then repeats)
+  pollBandwidth();
+  const bwInterval = setInterval(pollBandwidth, 1000);
+
+  return () => {
+    clearInterval(interval);
+    clearInterval(bwInterval);
+  };
 });
 </script>
 
@@ -114,6 +124,11 @@ $effect(() => {
       <div>Active: {activeCount}</div>
       <div>All: {$torrents.length}</div>
       <div>Selected: {$selectedTorrents.length}</div>
+    </div>
+
+    <!-- Bandwidth graph — -mx-6 breaks out of the sidebar's p-6 so the SVG touches both edges -->
+    <div class="-mx-6 mt-auto">
+      <BandwidthGraph />
     </div>
   </aside>
 

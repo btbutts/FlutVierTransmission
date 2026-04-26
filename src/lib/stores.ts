@@ -319,3 +319,33 @@ export function cancelHidePeersTooltip() {
     _peersHideTimer = null;
   }
 }
+
+// ─── Bandwidth History ────────────────────────────────────────────────────────
+
+export interface BandwidthPoint {
+  download: number; // bytes/sec
+  upload: number;   // bytes/sec
+  timestamp: number; // Date.now()
+}
+
+const MAX_BW_HISTORY = 43200; // 12 h at 1 sample/sec
+export const bandwidthHistory = writable<BandwidthPoint[]>([]);
+export const bandwidthLastPollTime = writable<number>(Date.now());
+
+export async function pollBandwidth(): Promise<void> {
+  try {
+    const res = await callRpc<{ downloadSpeed: number; uploadSpeed: number }>('session-stats');
+    const point: BandwidthPoint = {
+      download: res.downloadSpeed ?? 0,
+      upload: res.uploadSpeed ?? 0,
+      timestamp: Date.now()
+    };
+    bandwidthHistory.update((h) => {
+      const next = [...h, point];
+      return next.length > MAX_BW_HISTORY ? next.slice(next.length - MAX_BW_HISTORY) : next;
+    });
+    bandwidthLastPollTime.set(Date.now());
+  } catch {
+    // Silently skip — graph will not update this tick
+  }
+}

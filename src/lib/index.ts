@@ -29,10 +29,13 @@ export {
   peersTooltipStore,
   showPeersTooltip,
   hidePeersTooltip,
-  cancelHidePeersTooltip
+  cancelHidePeersTooltip,
+  bandwidthHistory,
+  bandwidthLastPollTime,
+  pollBandwidth
 } from './stores';
 export type { Torrent, GeoInfo, PeerEntry } from './types';
-export type { PeersTooltipState } from './stores';
+export type { PeersTooltipState, BandwidthPoint } from './stores';
 export type { DropdownOption } from './components/dropdown.svelte';
 export {
   windowPopUp,

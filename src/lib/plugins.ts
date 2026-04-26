@@ -1,6 +1,8 @@
 // place files you want to import through the `$lib` alias in this folder.
 // src/lib/plugins.ts
 import type { Component } from 'svelte';
+import ArrowDownBox from '~icons/mdi/arrow-down-box';
+import ArrowUpBox from '~icons/mdi/arrow-up-box';
 import Backburger from '~icons/mdi/backburger';
 import Check from '~icons/mdi/check';
 import Circle from '~icons/mdi/circle';
@@ -24,6 +26,8 @@ import TimerEdit from '~icons/mdi/timer-edit';
 import Wan from '~icons/mdi/wan';
 
 export {
+  ArrowDownBox,
+  ArrowUpBox,
   Play,
   Pause,
   Delete,
