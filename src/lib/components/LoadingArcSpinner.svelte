@@ -1,4 +1,4 @@
-<!-- src/lib/components/ArcSpinner.svelte
+<!-- src/lib/components/LoadingArcSpinner.svelte
      Reusable 4-arc "paint-and-erase" loading spinner.
 
      Positive phase: four mdi-loading arcs sweep clockwise one quarter at a time,
@@ -102,24 +102,48 @@ function handleIteration() {
 
 /* Paints Q1 in phase 1, then holds */
 @keyframes paint-arc-2-pos {
-  0%   { transform: rotate(0deg); }
-  25%  { transform: rotate(90deg); }
-  100% { transform: rotate(90deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(90deg);
+  }
+  100% {
+    transform: rotate(90deg);
+  }
 }
 /* Paints Q1 in phase 1, Q4 in phase 2, then holds */
 @keyframes paint-arc-3-pos {
-  0%   { transform: rotate(0deg); }
-  25%  { transform: rotate(90deg); }
-  50%  { transform: rotate(180deg); }
-  100% { transform: rotate(180deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(90deg);
+  }
+  50% {
+    transform: rotate(180deg);
+  }
+  100% {
+    transform: rotate(180deg);
+  }
 }
 /* Paints Q1→Q4→Q3 across phases 1–3, then holds (completes the circle) */
 @keyframes paint-arc-4-pos {
-  0%   { transform: rotate(0deg); }
-  25%  { transform: rotate(90deg); }
-  50%  { transform: rotate(180deg); }
-  75%  { transform: rotate(270deg); }
-  100% { transform: rotate(270deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(90deg);
+  }
+  50% {
+    transform: rotate(180deg);
+  }
+  75% {
+    transform: rotate(270deg);
+  }
+  100% {
+    transform: rotate(270deg);
+  }
 }
 
 /* ── Negative phase: erase circle Q2 → Q1 → Q4 → Q3 → Q2 ────────────────────
@@ -149,31 +173,65 @@ function handleIteration() {
 
 /* Icon 1 leads: erases Q2 immediately, sweeps through every quadrant */
 @keyframes paint-arc-1-neg {
-  0%   { transform: rotate(0deg); }
-  25%  { transform: rotate(90deg); }
-  50%  { transform: rotate(180deg); }
-  75%  { transform: rotate(270deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(90deg);
+  }
+  50% {
+    transform: rotate(180deg);
+  }
+  75% {
+    transform: rotate(270deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 /* Icon 2 holds at Q1 through phase 1, then follows Icon 1 */
 @keyframes paint-arc-2-neg {
-  0%   { transform: rotate(90deg); }
-  25%  { transform: rotate(90deg); }
-  50%  { transform: rotate(180deg); }
-  75%  { transform: rotate(270deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(90deg);
+  }
+  25% {
+    transform: rotate(90deg);
+  }
+  50% {
+    transform: rotate(180deg);
+  }
+  75% {
+    transform: rotate(270deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 /* Icon 3 holds at Q4 through phases 1–2, then follows Icons 1+2 */
 @keyframes paint-arc-3-neg {
-  0%   { transform: rotate(180deg); }
-  50%  { transform: rotate(180deg); }
-  75%  { transform: rotate(270deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(180deg);
+  }
+  50% {
+    transform: rotate(180deg);
+  }
+  75% {
+    transform: rotate(270deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 /* Icon 4 holds at Q3 through phases 1–3; all four converge to Q2 in phase 4 */
 @keyframes paint-arc-4-neg {
-  0%   { transform: rotate(270deg); }
-  75%  { transform: rotate(270deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(270deg);
+  }
+  75% {
+    transform: rotate(270deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 </style>

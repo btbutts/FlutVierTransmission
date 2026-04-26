@@ -324,7 +324,7 @@ export function cancelHidePeersTooltip() {
 
 export interface BandwidthPoint {
   download: number; // bytes/sec
-  upload: number;   // bytes/sec
+  upload: number; // bytes/sec
   timestamp: number; // Date.now()
 }
 
