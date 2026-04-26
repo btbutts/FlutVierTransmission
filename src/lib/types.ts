@@ -6,8 +6,8 @@ export interface TrackerStat {
   seederCount: number;
   leecherCount: number;
   lastAnnounceSucceeded: boolean;
-  lastAnnounceTime: number;    // Unix/POSIX timestamp (seconds)
-  nextAnnounceTime: number;    // Unix/POSIX timestamp (seconds)
+  lastAnnounceTime: number; // Unix/POSIX timestamp (seconds)
+  nextAnnounceTime: number; // Unix/POSIX timestamp (seconds)
   announce: string;
   downloadCount: number;
   hasAnnounced: boolean;
@@ -35,42 +35,42 @@ export interface Peer {
   clientIsChoked: boolean;
   clientIsInterested: boolean;
   flagStr: string;
-  isDownloadingFrom: boolean;   // true = this peer is sending data TO us (seeder)
+  isDownloadingFrom: boolean; // true = this peer is sending data TO us (seeder)
   isEncrypted: boolean;
   isIncoming: boolean;
-  isUploadingTo: boolean;       // true = we are sending data TO this peer (leecher)
+  isUploadingTo: boolean; // true = we are sending data TO this peer (leecher)
   isUTP: boolean;
   peerIsChoked: boolean;
   peerIsInterested: boolean;
   port: number;
   progress: number;
-  rateToClient: number;         // bytes/sec download from this peer
-  rateToPeer: number;           // bytes/sec upload to this peer
+  rateToClient: number; // bytes/sec download from this peer
+  rateToPeer: number; // bytes/sec upload to this peer
 }
 
 export interface File {
   bytes: number;
   name: string;
-  length: number;  // Full file size
+  length: number; // Full file size
 }
 
 export interface FileStat {
   bytesCompleted: number;
-  wanted: boolean;   // true = file is queued to download; false = skipped
+  wanted: boolean; // true = file is queued to download; false = skipped
   have: number;
-  priority: number;  // -1 low, 0 normal, 1 high (Transmission never returns -2; use !wanted for skip)
+  priority: number; // -1 low, 0 normal, 1 high (Transmission never returns -2; use !wanted for skip)
 }
 
 export interface Torrent {
   id: number;
   name: string;
-  status: number;           // 0 = stopped, 1 = check waiting, etc.
-  percentDone: number;      // 0.0 to 1.0
-  totalSize: number;        // bytes
-  sizeWhenDone: number;     // bytes
-  rateDownload: number;     // bytes/sec
-  rateUpload: number;       // bytes/sec
-  eta: number;              // seconds
+  status: number; // 0 = stopped, 1 = check waiting, etc.
+  percentDone: number; // 0.0 to 1.0
+  totalSize: number; // bytes
+  sizeWhenDone: number; // bytes
+  rateDownload: number; // bytes/sec
+  rateUpload: number; // bytes/sec
+  eta: number; // seconds
   downloadDir: string;
   error: number;
   errorString?: string;
@@ -79,8 +79,8 @@ export interface Torrent {
   doneDate?: number;
   queuePosition?: number;
   seedRatio?: number;
-  peersSendingToUs?: number;    // Leechers (we're seeding to)
-  peersGettingFromUs?: number;  // Active seeders (downloading from)
+  peersSendingToUs?: number; // Leechers (we're seeding to)
+  peersGettingFromUs?: number; // Active seeders (downloading from)
   trackers?: Array<{ announce: string }>;
   trackerStats?: TrackerStat[];
   peers?: Peer[];
@@ -88,6 +88,20 @@ export interface Torrent {
   // we'll handle them later when we add per-torrent file view
   files?: File[];
   fileStats?: FileStat[];
-  uploadedEver: number;     // bytes
-  downloadedEver: number;   // bytes
+  uploadedEver: number; // bytes
+  downloadedEver: number; // bytes
+}
+
+export interface GeoInfo {
+  countryCode: string;
+  country: string;
+  city: string;
+  regionName: string;
+  cachedAt: number;
+}
+
+export interface PeerEntry {
+  address: string;
+  geo: GeoInfo | null;
+  loading: boolean;
 }

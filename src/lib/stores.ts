@@ -277,41 +277,45 @@ export async function getTorrentFilesList(id: number): Promise<{
   return res.torrents?.[0] ?? null;
 }
 
-// ─── Seeds Tooltip Portal Store ───────────────────────────────────────────────
+// ─── Peers Tooltip Portal Store ───────────────────────────────────────────────
 
-export interface SeedsTooltipState {
+export interface PeersTooltipState {
   torrentId: number;
-  seederCount: number;
-  maxSeeders: number;
+  /** Number of peers actively connected for this direction (seeding to us / we're uploading to) */
+  activePeerCount: number;
+  /** Max peers reported by tracker (seederCount for Seeds column, leecherCount for Leechers column) */
+  maxPeerCount: number;
   trackerStats: TrackerStat[];
+  /** Determines which peer direction the tooltip displays */
+  mode: 'seeders' | 'leechers';
   x: number;
   y: number;
   above: boolean;
 }
 
 // null = tooltip hidden; non-null = visible with those coordinates + data
-export const seedsTooltipStore = writable<SeedsTooltipState | null>(null);
+export const peersTooltipStore = writable<PeersTooltipState | null>(null);
 
-let _seedsHideTimer: ReturnType<typeof setTimeout> | null = null;
+let _peersHideTimer: ReturnType<typeof setTimeout> | null = null;
 
-export function showSeedsTooltip(data: SeedsTooltipState) {
-  if (_seedsHideTimer) {
-    clearTimeout(_seedsHideTimer);
-    _seedsHideTimer = null;
+export function showPeersTooltip(data: PeersTooltipState) {
+  if (_peersHideTimer) {
+    clearTimeout(_peersHideTimer);
+    _peersHideTimer = null;
   }
-  seedsTooltipStore.set(data);
+  peersTooltipStore.set(data);
 }
 
-export function hideSeedsTooltip() {
-  _seedsHideTimer = setTimeout(() => {
-    seedsTooltipStore.set(null);
-    _seedsHideTimer = null;
+export function hidePeersTooltip() {
+  _peersHideTimer = setTimeout(() => {
+    peersTooltipStore.set(null);
+    _peersHideTimer = null;
   }, 150);
 }
 
-export function cancelHideSeedsTooltip() {
-  if (_seedsHideTimer) {
-    clearTimeout(_seedsHideTimer);
-    _seedsHideTimer = null;
+export function cancelHidePeersTooltip() {
+  if (_peersHideTimer) {
+    clearTimeout(_peersHideTimer);
+    _peersHideTimer = null;
   }
 }

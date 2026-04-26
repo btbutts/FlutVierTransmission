@@ -34,6 +34,6 @@ export const defaultColumns: ColumnConfig[] = [
   { key: 'error',         label: 'Error',    width: '120px', minWidth: '96px',  align: 'left',   headerAlign: 'center', sortable: true, resizable: true, isVisible: false },
   { key: 'queuePos',      label: 'Queue',    width: '72px',  minWidth: '60px',  align: 'center', headerAlign: 'center', sortable: true, resizable: true, isVisible: false },
   { key: 'seedRatio',     label: 'Ratio',    width: '80px',  minWidth: '64px',  align: 'center', headerAlign: 'center', sortable: true, resizable: true, isVisible: false },
-  { key: 'leechers',      label: 'Leechers', width: '94px',  minWidth: '72px',  align: 'center', headerAlign: 'center', sortable: true, resizable: true, isVisible: false },
+  { key: 'leechers',      label: 'Leechers', width: '110px', minWidth: '96px',  align: 'center', headerAlign: 'center', sortable: true, resizable: true, isVisible: false },
   { key: 'trackers',      label: 'Trackers', width: '200px', minWidth: '140px', align: 'center', headerAlign: 'center', sortable: true, resizable: true, isVisible: false },
 ];

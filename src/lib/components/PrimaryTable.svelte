@@ -14,9 +14,9 @@ import {
 } from '$lib';
 
 import DDSelector from '$lib/components/DDSelector.svelte';
-import SeedsTooltip from '$lib/components/SeedsTooltip.svelte';
+import PeersCellContent from '$lib/components/PeersCellContent.svelte';
 import { defaultColumns, type ColumnConfig } from '$lib/config/columns';
-import { formatBytes, formatSpeed } from '$lib/helpers';
+import { formatBytes, formatEta, formatSpeed } from '$lib/helpers';
 import { Delete, Pause, Play } from '$lib/plugins';
 
 let sortKey = $state<string>('name');
@@ -170,6 +170,12 @@ function handleToggle(event: MouseEvent, id: number) {
 
 const sortedTorrents = $derived(
   $torrents.toSorted((a, b) => {
+    if (sortKey === 'activeSeeders') {
+      return comparePeerColumn(a, b, (t) => t.peersSendingToUs ?? 0, maxSeedersFor, sortDir);
+    }
+    if (sortKey === 'leechers') {
+      return comparePeerColumn(a, b, (t) => t.peersGettingFromUs ?? 0, maxLeechersFor, sortDir);
+    }
     const valA = getSortValue(a, sortKey);
     const valB = getSortValue(b, sortKey);
     if (typeof valA === 'string' && typeof valB === 'string') {
@@ -192,7 +198,7 @@ function getDisplayValue(t: Torrent, key: string): string {
     case 'status':        return statusText(t.status, t.error, t.errorString);
     case 'totalSize':     return formatBytes(t.totalSize);
     case 'rateDownload':  return formatSpeed(t.rateDownload);
-    case 'eta':           return t.eta < 0 ? '—' : `${Math.round(t.eta / 60)}m`;
+    case 'eta':           return t.eta < 0 ? '—' : formatEta(t.eta);
     case 'private':       return t.isPrivate ? '✓' : '✗';
     case 'ul':            return formatSpeed(t.rateUpload ?? 0);
     case 'activeSeeders': return `${t.peersSendingToUs ?? 0} : ${maxSeedersFor(t) >= 0 ? maxSeedersFor(t) : '—'}`;
@@ -202,7 +208,7 @@ function getDisplayValue(t: Torrent, key: string): string {
     case 'error':         return t.errorString ?? '—';
     case 'queuePos':      return t.queuePosition?.toString() ?? '—';
     case 'seedRatio':     return t.seedRatio ? t.seedRatio.toFixed(2) : '—';
-    case 'leechers':      return t.peersGettingFromUs?.toString() ?? '—';
+    case 'leechers':      return `${t.peersGettingFromUs ?? 0} : ${maxLeechersFor(t) >= 0 ? maxLeechersFor(t) : '—'}`;
     case 'trackers':      return (t.trackers ?? []).map(tr => tr.announce.split('/')[2]).filter(Boolean).join(', ') || '—';
     default:              return '';
   }
@@ -255,6 +261,49 @@ function statusText(status: number, err: number, errString?: string): string {
 function maxSeedersFor(t: Torrent): number {
   if (!t.trackerStats || t.trackerStats.length === 0) return -1;
   return Math.max(...t.trackerStats.map((ts) => ts.seederCount));
+}
+
+function maxLeechersFor(t: Torrent): number {
+  if (!t.trackerStats || t.trackerStats.length === 0) return -1;
+  return Math.max(...t.trackerStats.map((ts) => ts.leecherCount));
+}
+
+/**
+ * Two-tier comparator for Seeds / Leechers columns.
+ *
+ * Tier 1 — torrents with at least one active peer, sorted by active count
+ *           in the chosen direction (desc = most first, asc = fewest first).
+ * Tier 2 — torrents with zero active peers, sorted by max peer count in the
+ *           same chosen direction (desc = most possible first, asc = fewest first).
+ *
+ * Tier 1 always precedes Tier 2 regardless of direction, ensuring actively-
+ * connected torrents are surfaced first. Toggling asc/desc produces a visible
+ * difference across both tiers.
+ */
+function comparePeerColumn(
+  a: Torrent,
+  b: Torrent,
+  getActive: (t: Torrent) => number,
+  getMax: (t: Torrent) => number,
+  dir: 'asc' | 'desc'
+): number {
+  const activeA = getActive(a);
+  const activeB = getActive(b);
+  const aHasActive = activeA > 0;
+  const bHasActive = activeB > 0;
+
+  // Tier 1 always precedes Tier 2 regardless of sort direction
+  if (aHasActive !== bHasActive) return aHasActive ? -1 : 1;
+
+  if (aHasActive) {
+    // Both have active peers — respect the chosen sort direction
+    return dir === 'desc' ? activeB - activeA : activeA - activeB;
+  }
+
+  // Both inactive — sort by max peer count in the chosen direction (treat -1/unknown as 0)
+  const maxA = Math.max(0, getMax(a));
+  const maxB = Math.max(0, getMax(b));
+  return dir === 'desc' ? maxB - maxA : maxA - maxB;
 }
 
 function toggleSort(key: string) {
@@ -489,18 +538,24 @@ function openFiles(t: Torrent) {
                         </span>
                       {/if}
                     {:else if col.key === 'activeSeeders'}
-                      <div class="flex items-center justify-center gap-1.5">
-                        <SeedsTooltip
+                      <div class="flex items-center justify-center">
+                        <PeersCellContent
                           torrentId={torrent.id}
-                          seederCount={torrent.peersSendingToUs ?? 0}
-                          maxSeeders={maxSeedersFor(torrent)}
+                          activePeerCount={torrent.peersSendingToUs ?? 0}
+                          maxPeerCount={maxSeedersFor(torrent)}
                           trackerStats={torrent.trackerStats ?? []}
+                          mode="seeders"
                         />
-                        <span class="whitespace-nowrap tabular-nums">
-                          {torrent.peersSendingToUs ?? 0}&nbsp;:&nbsp;{maxSeedersFor(torrent) >= 0
-                            ? maxSeedersFor(torrent)
-                            : '—'}
-                        </span>
+                      </div>
+                    {:else if col.key === 'leechers'}
+                      <div class="flex items-center justify-center">
+                        <PeersCellContent
+                          torrentId={torrent.id}
+                          activePeerCount={torrent.peersGettingFromUs ?? 0}
+                          maxPeerCount={maxLeechersFor(torrent)}
+                          trackerStats={torrent.trackerStats ?? []}
+                          mode="leechers"
+                        />
                       </div>
                     {:else}
                       <div

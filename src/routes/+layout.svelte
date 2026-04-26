@@ -14,7 +14,7 @@ import {
 import AddTorrentButton from '$lib/components/AddTorrentButton.svelte';
 import AddTorrentMasterModal from '$lib/components/AddTorrentMasterModal.svelte';
 import RefreshButton from '$lib/components/RefreshButton.svelte';
-import SeedsTooltipPortal from '$lib/components/SeedsTooltipPortal.svelte';
+import PeersTooltipPortal from '$lib/components/PeersTooltipPortal.svelte';
 import SettingsButton from '$lib/components/SettingsButton.svelte';
 import SettingsModal from '$lib/components/SettingsModal.svelte';
 import { createHorizontalScrollSync } from '$lib/horizontalScrollSync.svelte';
@@ -143,8 +143,8 @@ $effect(() => {
   <!-- Settings Modal (always mounted so theme effects run at app start) -->
   <SettingsModal bind:open={settingsOpen} />
 
-  <!-- Seeds tooltip portal: always mounted here at layout root, outside all overflow/backdrop containers -->
-  <SeedsTooltipPortal />
+  <!-- Peers tooltip portal: always mounted here at layout root, outside all overflow/backdrop containers -->
+  <PeersTooltipPortal />
 </div>
 
 <style>

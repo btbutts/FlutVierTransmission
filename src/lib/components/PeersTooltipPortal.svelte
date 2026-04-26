@@ -1,114 +1,56 @@
 <script lang="ts">
-import Icon, { addCollection } from '@iconify/svelte';
+import { SvelteMap } from 'svelte/reactivity';
 import data from '@iconify-json/flagpack/icons.json';
-
+import Icon, { addCollection } from '@iconify/svelte';
 import {
-  cancelHideSeedsTooltip,
+  cancelHidePeersTooltip,
   fetchTorrentPeers,
-  hideSeedsTooltip,
-  seedsTooltipStore
+  getCachedGeoLookup,
+  hidePeersTooltip,
+  ipGeoLookup,
+  peersTooltipStore
 } from '$lib';
-import type { Peer } from '$lib/types';
+
+import type { Peer, PeerEntry } from '$lib/types';
 
 // Register the full flagpack icon set locally — no CDN requests needed
 addCollection(data as Parameters<typeof addCollection>[0]);
 
-interface GeoInfo {
-  countryCode: string;
-  country: string;
-  city: string;
-  regionName: string;
-  cachedAt: number;
-}
+// Session-level peer cache keyed by `${torrentId}:${mode}` — persists across open/close cycles
+const peerEntryCache = new SvelteMap<string, PeerEntry[]>();
 
-interface SeederEntry {
-  address: string;
-  geo: GeoInfo | null;
-  loading: boolean;
-}
-
-const CACHE_KEY = 'ip_geo_cache';
-const CACHE_TTL = 48 * 60 * 60 * 1000; // 48 hours ms
-
-// Session-level peer cache keyed by torrentId — persists across open/close cycles
-const seederCache = new Map<number, SeederEntry[]>();
-
-let seederEntries = $state<SeederEntry[]>([]);
-let activeTorrentId = $state<number | null>(null);
+let peerEntries = $state<PeerEntry[]>([]);
+// Composite key tracks which torrent + mode is currently active
+let activeKey = $state<string | null>(null);
 
 $effect(() => {
-  const state = $seedsTooltipStore;
+  const state = $peersTooltipStore;
   if (!state) {
-    seederEntries = [];
-    activeTorrentId = null;
+    peerEntries = [];
+    activeKey = null;
     return;
   }
 
-  if (state.torrentId === activeTorrentId) {
-    // Same torrent re-shown: restore cached entries (geo may have arrived since)
-    const cached = seederCache.get(state.torrentId);
-    if (cached) seederEntries = cached;
+  const key = `${state.torrentId}:${state.mode}`;
+
+  if (key === activeKey) {
+    // Same torrent + mode re-shown: restore cached entries (geo may have arrived since)
+    const cached = peerEntryCache.get(key);
+    if (cached) peerEntries = cached;
     return;
   }
 
-  activeTorrentId = state.torrentId;
-  const cached = seederCache.get(state.torrentId);
+  activeKey = key;
+  const cached = peerEntryCache.get(key);
   if (cached) {
-    seederEntries = cached;
+    peerEntries = cached;
   } else {
-    seederEntries = [];
-    loadPeers(state.torrentId);
+    peerEntries = [];
+    loadPeers(state.torrentId, state.mode);
   }
 });
 
-function getCachedGeo(ip: string): GeoInfo | null {
-  try {
-    const raw = localStorage.getItem(CACHE_KEY);
-    if (!raw) return null;
-    const cache: Record<string, GeoInfo> = JSON.parse(raw);
-    const entry = cache[ip];
-    if (!entry) return null;
-    if (Date.now() - entry.cachedAt > CACHE_TTL) return null;
-    return entry;
-  } catch {
-    return null;
-  }
-}
-
-function setCachedGeo(ip: string, info: GeoInfo) {
-  try {
-    const raw = localStorage.getItem(CACHE_KEY);
-    const cache: Record<string, GeoInfo> = raw ? JSON.parse(raw) : {};
-    cache[ip] = { ...info, cachedAt: Date.now() };
-    localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
-  } catch {
-    // localStorage may be unavailable
-  }
-}
-
-async function lookupGeo(ip: string): Promise<GeoInfo | null> {
-  const cached = getCachedGeo(ip);
-  if (cached) return cached;
-  try {
-    const res = await fetch(`http://ip-api.com/json/${ip}`);
-    if (!res.ok) return null;
-    const json = await res.json();
-    if (json.status !== 'success') return null;
-    const info: GeoInfo = {
-      countryCode: json.countryCode ?? '',
-      country: json.country ?? '',
-      city: json.city ?? '',
-      regionName: json.regionName ?? '',
-      cachedAt: Date.now()
-    };
-    setCachedGeo(ip, info);
-    return info;
-  } catch {
-    return null;
-  }
-}
-
-async function loadPeers(torrentId: number) {
+async function loadPeers(torrentId: number, mode: 'seeders' | 'leechers') {
   let peers: Peer[];
   try {
     peers = await fetchTorrentPeers(torrentId);
@@ -116,33 +58,38 @@ async function loadPeers(torrentId: number) {
     return;
   }
 
-  const seeders = peers.filter((p) => p.isDownloadingFrom);
+  // Seeders = peers sending data TO us (isDownloadingFrom); Leechers = peers we upload TO (isUploadingTo)
+  const filtered =
+    mode === 'seeders'
+      ? peers.filter((p) => p.isDownloadingFrom)
+      : peers.filter((p) => p.isUploadingTo);
 
   const seen: Record<string, true> = {};
-  const unique = seeders.filter((p) => {
+  const unique = filtered.filter((p) => {
     if (seen[p.address]) return false;
     seen[p.address] = true;
     return true;
   });
 
-  const entries: SeederEntry[] = unique.map((p) => ({
+  const entries: PeerEntry[] = unique.map((p) => ({
     address: p.address,
-    geo: getCachedGeo(p.address),
-    loading: getCachedGeo(p.address) === null
+    geo: getCachedGeoLookup(p.address),
+    loading: getCachedGeoLookup(p.address) === null
   }));
 
-  seederCache.set(torrentId, entries);
-  if (torrentId === activeTorrentId) seederEntries = entries;
+  const key = `${torrentId}:${mode}`;
+  peerEntryCache.set(key, entries);
+  if (key === activeKey) peerEntries = entries;
 
   // Async geo lookups — update entries as each result arrives
   unique.forEach(async (p, i) => {
     if (entries[i]?.geo !== null) return;
-    const geo = await lookupGeo(p.address);
-    const cached = seederCache.get(torrentId);
+    const geo = await ipGeoLookup(p.address);
+    const cached = peerEntryCache.get(key);
     if (cached?.[i]) {
       cached[i] = { ...cached[i], geo, loading: false };
-      if (torrentId === activeTorrentId) {
-        seederEntries = [...cached];
+      if (key === activeKey) {
+        peerEntries = [...cached];
       }
     }
   });
@@ -157,8 +104,9 @@ function formatLocalTime(unixSeconds: number): string {
 }
 </script>
 
-{#if $seedsTooltipStore}
-  {@const state = $seedsTooltipStore}
+{#if $peersTooltipStore}
+  {@const state = $peersTooltipStore}
+  {@const isSeeders = state.mode === 'seeders'}
   {@const bestTracker = (() => {
     if (!state.trackerStats?.length) return null;
     const succeeded = state.trackerStats.filter((t) => t.lastAnnounceSucceeded);
@@ -168,22 +116,26 @@ function formatLocalTime(unixSeconds: number): string {
 
   <div
     role="tooltip"
-    class="fixed z-[9999] min-w-[240px] max-w-[340px] rounded-xl border border-gray-200/60 bg-white/95 p-3 text-xs shadow-2xl backdrop-blur-md dark:border-gray-700/60 dark:bg-gray-900/95 dark:text-gray-100"
+    class="fixed z-[9999] max-w-[340px] min-w-[240px] rounded-xl border border-gray-200/60 bg-white/95 p-3 text-xs shadow-2xl backdrop-blur-md dark:border-gray-700/60 dark:bg-gray-900/95 dark:text-gray-100"
     style="left: {Math.max(8, Math.min(state.x - 4, window.innerWidth - 352))}px; {state.above
       ? `bottom: ${window.innerHeight - state.y}px;`
       : `top: ${state.y}px;`}"
-    onmouseenter={cancelHideSeedsTooltip}
-    onmouseleave={hideSeedsTooltip}
+    onmouseenter={cancelHidePeersTooltip}
+    onmouseleave={hidePeersTooltip}
   >
-    <!-- Seeder counts -->
+    <!-- Peer counts -->
     <div class="space-y-0.5 text-gray-700 dark:text-gray-200">
       <div class="flex justify-between gap-4">
-        <span class="text-gray-500 dark:text-gray-400">Connected Seeders:</span>
-        <span class="font-medium">{state.seederCount}</span>
+        <span class="text-gray-500 dark:text-gray-400">
+          {isSeeders ? 'Connected Seeders:' : 'Connected Leechers:'}
+        </span>
+        <span class="font-medium">{state.activePeerCount}</span>
       </div>
       <div class="flex justify-between gap-4">
-        <span class="text-gray-500 dark:text-gray-400">Max Available Seeders:</span>
-        <span class="font-medium">{state.maxSeeders >= 0 ? state.maxSeeders : '—'}</span>
+        <span class="text-gray-500 dark:text-gray-400">
+          {isSeeders ? 'Max Available Seeders:' : 'Max Available Leechers:'}
+        </span>
+        <span class="font-medium">{state.maxPeerCount >= 0 ? state.maxPeerCount : '—'}</span>
       </div>
     </div>
 
@@ -216,11 +168,11 @@ function formatLocalTime(unixSeconds: number): string {
       <div class="text-gray-500 dark:text-gray-400">No tracker data available.</div>
     {/if}
 
-    <!-- Seeder peer list -->
-    {#if seederEntries.length > 0}
+    <!-- Peer list -->
+    {#if peerEntries.length > 0}
       <div class="my-2 border-t border-gray-200/60 dark:border-gray-700/60"></div>
       <div class="space-y-2">
-        {#each seederEntries as entry (entry.address)}
+        {#each peerEntries as entry (entry.address)}
           <div class="flex items-start gap-2">
             <!-- Flag, top-aligned with the IP text via mt-[1px] -->
             <div class="mt-[1px] flex-shrink-0">
@@ -258,9 +210,11 @@ function formatLocalTime(unixSeconds: number): string {
           </div>
         {/each}
       </div>
-    {:else if activeTorrentId !== null && seederEntries.length === 0}
+    {:else if activeKey !== null && peerEntries.length === 0}
       <div class="my-2 border-t border-gray-200/60 dark:border-gray-700/60"></div>
-      <div class="text-gray-400 italic dark:text-gray-500">No active seeder connections.</div>
+      <div class="text-gray-400 italic dark:text-gray-500">
+        {isSeeders ? 'No active seeder connections.' : 'No active leecher connections.'}
+      </div>
     {/if}
   </div>
 {/if}

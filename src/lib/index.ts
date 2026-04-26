@@ -2,36 +2,43 @@
 // src/lib/index.ts
 export { callRpc } from './rpc';
 export {
-    refreshAll,
-    selectedTorrents,
-    torrents,
-    session,
-    isLoading,
-    error,
-    addTorrent,
-    addTorrentMetainfo,
-    startTorrents,
-    stopTorrents,
-    removeTorrents,
-    performActionAndRefresh,
-    updateFilePriorities,
-    layoutMinWidth,
-    refreshSession,
-    updateSession,
-    updateBlocklist,
-    currentTorrent,
-    refreshTorrent,
-    setFilePriorities,
-    addTorrentForSelect,
-    addTorrentMetainfoForSelect,
-    getTorrentFilesList,
-    fetchTorrentPeers,
-    seedsTooltipStore,
-    showSeedsTooltip,
-    hideSeedsTooltip,
-    cancelHideSeedsTooltip
+  refreshAll,
+  selectedTorrents,
+  torrents,
+  session,
+  isLoading,
+  error,
+  addTorrent,
+  addTorrentMetainfo,
+  startTorrents,
+  stopTorrents,
+  removeTorrents,
+  performActionAndRefresh,
+  updateFilePriorities,
+  layoutMinWidth,
+  refreshSession,
+  updateSession,
+  updateBlocklist,
+  currentTorrent,
+  refreshTorrent,
+  setFilePriorities,
+  addTorrentForSelect,
+  addTorrentMetainfoForSelect,
+  getTorrentFilesList,
+  fetchTorrentPeers,
+  peersTooltipStore,
+  showPeersTooltip,
+  hidePeersTooltip,
+  cancelHidePeersTooltip
 } from './stores';
-export type { Torrent } from './types';
-export type { SeedsTooltipState } from './stores';
+export type { Torrent, GeoInfo, PeerEntry } from './types';
+export type { PeersTooltipState } from './stores';
 export type { DropdownOption } from './components/dropdown.svelte';
-export { windowPopUp } from './helpers';
+export {
+  windowPopUp,
+  getCachedGeoLookup,
+  ipGeoLookup,
+  setCachedGeoLookup,
+  CACHE_KEY,
+  CACHE_TTL
+} from './helpers';
