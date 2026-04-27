@@ -8,7 +8,7 @@ import { getCompletedTorrentPaths } from '$lib/helpers';
 import { Close, InformationVariantCircleOutline, LanCheck, LanDisconnect, Wan } from '$lib/plugins';
 
 import DDSelector from './DDSelector.svelte';
-import FlyStretchModal from './FlyStretchModal.svelte';
+import FlyStretchAnimationWrapper from './FlyStretchAnimWrapper.svelte';
 import SaveButton from './SaveButton.svelte';
 import TimeDDSelector from './TimeDDSelector.svelte';
 
@@ -186,7 +186,7 @@ async function saveSettings() {
   }
 }
 
-// Runs after the FlyStretchModal close animation completes.
+// Runs after the FlyStretchAnimationWrapper close animation completes.
 // Keeps visible state intact during the shrink-back animation,
 // then resets everything once the panel has fully left the screen.
 function handleClosed() {
@@ -282,7 +282,7 @@ $effect(() => {
 });
 </script>
 
-<FlyStretchModal
+<FlyStretchAnimationWrapper
   bind:open
   {getTriggerRect}
   maxWidth={896}
@@ -1226,4 +1226,4 @@ $effect(() => {
       </div>
     </div>
   {/snippet}
-</FlyStretchModal>
+</FlyStretchAnimationWrapper>

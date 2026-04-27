@@ -66,6 +66,7 @@ let {
 
 let phase = $state<Phase>('closed');
 let showPortal = $state(false);
+let dialogEl = $state<HTMLElement | null>(null);
 let pX = $state(0);
 let pY = $state(0);
 let pW = $state(0);
@@ -113,6 +114,9 @@ async function runOpen() {
   phase = 'opening';
   setTimeout(() => {
     phase = 'open';
+    // Move focus onto the dialog so Escape (onkeydown) is reliably captured
+    // without requiring the user to click inside first.
+    dialogEl?.focus();
   }, animMs);
 }
 
@@ -164,6 +168,7 @@ onMount(() => {
        so backdrop clicks pass through it and land on this element, making
        e.target === e.currentTarget true and correctly triggering runClose(). -->
   <div
+    bind:this={dialogEl}
     use:windowPopUp
     role="dialog"
     aria-modal="true"

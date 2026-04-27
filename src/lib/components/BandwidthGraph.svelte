@@ -6,7 +6,7 @@ import { bandwidthHistory, bandwidthLastPollTime, session } from '$lib';
 
 import { ArrowDownBox, ArrowUpBox, Close } from '$lib/plugins';
 
-import FlyStretchModal from './FlyStretchModal.svelte';
+import FlyStretchAnimationWrapper from './FlyStretchAnimWrapper.svelte';
 import LoadingArcSpinner from './LoadingArcSpinner.svelte';
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -619,10 +619,10 @@ onMount(() => {
 {/if}
 
 <!-- ── Expanded modal portal ───────────────────────────────────────────────────
-     FlyStretchModal appends to <body> via windowPopUp so it's never clipped
-     by overflow containers. All animation logic lives in FlyStretchModal.svelte.
+     FlyStretchAnimationWrapper appends to <body> via windowPopUp so it's never clipped
+     by overflow containers. All animation logic lives in FlyStretchAnimationWrapper.svelte.
 ──────────────────────────────────────────────────────────────────────────────── -->
-<FlyStretchModal
+<FlyStretchAnimationWrapper
   bind:open={modalOpen}
   getTriggerRect={() => containerEl?.getBoundingClientRect() ?? null}
   maxWidth={700}
@@ -829,4 +829,4 @@ onMount(() => {
       </div>
     {/if}
   {/snippet}
-</FlyStretchModal>
+</FlyStretchAnimationWrapper>

@@ -1,12 +1,10 @@
 <script lang="ts">
 import { onMount } from 'svelte';
 import {
-  currentTorrent,
   error,
   isLoading,
   layoutMinWidth,
   performActionAndRefresh,
-  refreshTorrent,
   selectedTorrents,
   torrents,
   type DropdownOption,
@@ -18,6 +16,13 @@ import PeersCellContent from '$lib/components/PeersCellContent.svelte';
 import { defaultColumns, type ColumnConfig } from '$lib/config/columns';
 import { formatBytes, formatEta, formatSpeed } from '$lib/helpers';
 import { Check, Close, Delete, Pause, Play } from '$lib/plugins';
+
+interface Props {
+  /** Called when the user double-clicks a torrent row to open its files modal. */
+  onOpenFiles?: (torrent: Torrent, triggerRect: DOMRect) => void;
+}
+
+let { onOpenFiles }: Props = $props();
 
 let sortKey = $state<string>('name');
 let sortDir = $state<'asc' | 'desc'>('asc');
@@ -315,10 +320,6 @@ function toggleSort(key: string) {
   }
 }
 
-function openFiles(t: Torrent) {
-  currentTorrent.set(t);
-  refreshTorrent(t.id);
-}
 </script>
 
 <div class="flex min-h-0 flex-1 flex-col space-y-4" style="min-width: {minTableWidth}">
@@ -482,7 +483,8 @@ function openFiles(t: Torrent) {
                 class="h-12 cursor-pointer bg-white transition-colors hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 {isSelected
                   ? 'bg-blue-50 ring-2 ring-blue-200/50 dark:bg-blue-900 dark:ring-blue-800/50'
                   : ''}"
-                ondblclick={() => openFiles(torrent)}
+                ondblclick={(e) =>
+                  onOpenFiles?.(torrent, (e.currentTarget as HTMLElement).getBoundingClientRect())}
               >
                 <!-- Static Checkbox TD -->
                 <td
