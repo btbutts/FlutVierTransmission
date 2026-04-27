@@ -4,9 +4,9 @@ import { onMount } from 'svelte';
 import { get } from 'svelte/store';
 import { bandwidthHistory, bandwidthLastPollTime, session } from '$lib';
 
-import { windowPopUp } from '$lib/helpers';
 import { ArrowDownBox, ArrowUpBox, Close } from '$lib/plugins';
 
+import FlyStretchModal from './FlyStretchModal.svelte';
 import LoadingArcSpinner from './LoadingArcSpinner.svelte';
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -50,16 +50,7 @@ let rafId = 0;
 let showHint = $state(false);
 let hintTimer: ReturnType<typeof setTimeout> | null = null;
 
-// Modal animation phases
-type Phase = 'closed' | 'opening' | 'open' | 'closing';
-let phase = $state<Phase>('closed');
-let showPortal = $state(false);
-let pX = $state(0),
-  pY = $state(0),
-  pW = $state(0),
-  pH = $state(0);
-// When true, panel transitions are suppressed for one frame (used during resize).
-let noTransition = $state(false);
+let modalOpen = $state(false);
 
 // ── Data aggregation with zero-fill ───────────────────────────────────────────
 // Slices history according to the current time window and pan anchor, then
@@ -393,7 +384,7 @@ function onWheel(e: WheelEvent) {
     // deltaX is in CSS pixels; scale so one full-width swipe shifts by one time window.
     const h = get(bandwidthHistory);
     if (!h.length) return;
-    const W = (phase === 'open' ? modalCtnrW : svgCtnrW) || 256;
+    const W = (modalOpen ? modalCtnrW : svgCtnrW) || 256;
     // Current right-edge timestamp (live edge when not yet panned)
     const currentEnd = panEndTimestamp ?? h[h.length - 1].timestamp;
     // Shift in ms proportional to the scroll distance and current window size
@@ -408,61 +399,6 @@ function onWheel(e: WheelEvent) {
     panEndTimestamp = clamped >= latestTs - 1100 ? null : clamped;
   }
   // Plain vertical scroll (no Ctrl): no effect on the graph.
-}
-
-// ── Modal open / close ────────────────────────────────────────────────────────
-async function openModal() {
-  if (!containerEl) return;
-  const r = containerEl.getBoundingClientRect();
-  pX = r.left;
-  pY = r.top;
-  pW = r.width;
-  pH = r.height;
-  showPortal = true;
-  // Wait for Svelte's DOM update AND the browser's first paint at the start position,
-  // then transition to the final position so CSS animation fires correctly.
-  await new Promise<void>((res) => requestAnimationFrame(() => requestAnimationFrame(() => res())));
-  const mw = Math.min(700, window.innerWidth - 32);
-  const mh = Math.min(440, window.innerHeight - 32);
-  pX = (window.innerWidth - mw) / 2;
-  pY = (window.innerHeight - mh) / 2;
-  pW = mw;
-  pH = mh;
-  phase = 'opening';
-  setTimeout(() => {
-    phase = 'open';
-  }, ANIM_MS);
-}
-
-function closeModal() {
-  if (!containerEl) return;
-  phase = 'closing';
-  const r = containerEl.getBoundingClientRect();
-  pX = r.left;
-  pY = r.top;
-  pW = r.width;
-  pH = r.height;
-  setTimeout(() => {
-    showPortal = false;
-    phase = 'closed';
-  }, ANIM_MS);
-}
-
-// Keeps the modal centered and correctly sized as the viewport changes.
-// Transitions are suppressed for the resize frame so the modal tracks instantly.
-function handleResize() {
-  if (phase !== 'open') return;
-  noTransition = true;
-  const mw = Math.min(700, window.innerWidth - 32);
-  const mh = Math.min(440, window.innerHeight - 32);
-  pX = (window.innerWidth - mw) / 2;
-  pY = (window.innerHeight - mh) / 2;
-  pW = mw;
-  pH = mh;
-  // Restore transitions after one paint so open/close animations still work.
-  requestAnimationFrame(() => {
-    noTransition = false;
-  });
 }
 
 // ── rAF animation loop ─────────────────────────────────────────────────────────
@@ -492,11 +428,9 @@ onMount(() => {
   };
 
   rafId = requestAnimationFrame(tick);
-  window.addEventListener('resize', handleResize);
   return () => {
     cancelAnimationFrame(rafId);
     if (hintTimer) clearTimeout(hintTimer);
-    window.removeEventListener('resize', handleResize);
   };
 });
 </script>
@@ -514,9 +448,11 @@ onMount(() => {
     class="w-full select-none"
     role="img"
     aria-label="Bandwidth graph"
-    style="visibility: {showPortal ? 'hidden' : 'visible'};"
+    style="visibility: {modalOpen ? 'hidden' : 'visible'};"
     use:nonPassiveWheel={onWheel}
-    use:addDblClick={openModal}
+    use:addDblClick={() => {
+      modalOpen = true;
+    }}
     onmouseenter={onEnter}
     onmouseleave={onLeave}
     onmousemove={onSidebarMove}
@@ -663,7 +599,9 @@ onMount(() => {
 
   <!-- Accessible expand trigger for keyboard navigation -->
   <button
-    onclick={openModal}
+    onclick={() => {
+      modalOpen = true;
+    }}
     class="sr-only focus-visible:not-sr-only focus-visible:mt-1 focus-visible:w-full focus-visible:rounded focus-visible:bg-blue-600 focus-visible:px-2 focus-visible:py-1 focus-visible:text-xs focus-visible:text-white"
   >
     Expand bandwidth graph
@@ -681,254 +619,214 @@ onMount(() => {
 {/if}
 
 <!-- ── Expanded modal portal ───────────────────────────────────────────────────
-     Appended to <body> via windowPopUp so it's never clipped by overflow containers.
+     FlyStretchModal appends to <body> via windowPopUp so it's never clipped
+     by overflow containers. All animation logic lives in FlyStretchModal.svelte.
 ──────────────────────────────────────────────────────────────────────────────── -->
-{#if showPortal}
-  <!-- Outer div is the click-outside target. The inner overlay div has pointer-events:none
-       so backdrop clicks pass through it and land on this element, making
-       e.target === e.currentTarget true and correctly triggering closeModal(). -->
-  <div
-    use:windowPopUp
-    role="dialog"
-    aria-modal="true"
-    aria-label="Bandwidth graph - expanded view"
-    tabindex="-1"
-    style="position: fixed; inset: 0; z-index: 9999; pointer-events: {phase === 'open'
-      ? 'all'
-      : 'none'};"
-    onclick={(e) => {
-      if (e.target === e.currentTarget) closeModal();
-    }}
-    onkeydown={(e) => {
-      if (e.key === 'Escape') closeModal();
-    }}
-  >
-    <!-- Visual overlay: pointer-events:none so it never intercepts clicks.
-         Fades in when phase reaches 'opening' (same frame the panel starts sliding),
-         so the dark backdrop appears immediately with the panel, not after it. -->
+<FlyStretchModal
+  bind:open={modalOpen}
+  getTriggerRect={() => containerEl?.getBoundingClientRect() ?? null}
+  maxWidth={700}
+  maxHeight={440}
+  animMs={ANIM_MS}
+  ariaLabel="Bandwidth graph - expanded view"
+>
+  {#snippet children(phase, close, panelHeight)}
+    <!-- Modal header — uses position:relative so the time counter can be
+         absolutely centered across the full modal width independently of the
+         speed counters on the left and the close button on the right. -->
     <div
-      class="absolute inset-0 bg-black/50"
-      style="
-        pointer-events: none;
-        opacity: {phase === 'opening' || phase === 'open' ? 1 : 0};
-        transition: opacity {ANIM_MS}ms;
-      "
-    ></div>
-
-    <!-- Animated panel: starts at sidebar position, transitions to center modal -->
-    <div
-      class="bg-ColorPalette-bg-secondary/95 overflow-hidden rounded-3xl shadow-[0_0_0_1px_rgba(0,0,0,0.15),0_0_40px_16px_rgba(0,0,0,0.65),0_0_120px_60px_rgba(0,0,0,0.5)] backdrop-blur-xl"
-      style="
-        position: fixed;
-        left: {pX}px; top: {pY}px;
-        width: {pW}px; height: {pH}px;
-        opacity: {phase === 'open' || phase === 'opening' ? 1 : 0};
-        transition: {noTransition
-        ? 'none'
-        : `left ${ANIM_MS}ms cubic-bezier(0.4,0,0.2,1), top ${ANIM_MS}ms cubic-bezier(0.4,0,0.2,1), width ${ANIM_MS}ms cubic-bezier(0.4,0,0.2,1), height ${ANIM_MS}ms cubic-bezier(0.4,0,0.2,1), opacity ${ANIM_MS}ms`};
-      "
+      class="border-ColorPalette-border-tertiary/50 bg-ColorPalette-bg-quaternary/95 relative flex flex-shrink-0 items-center justify-between border-b px-6 py-4 backdrop-blur-md"
     >
-      <!-- Modal header — uses position:relative so the time counter can be
-           absolutely centered across the full modal width independently of the
-           speed counters on the left and the close button on the right. -->
-      <div
-        class="border-ColorPalette-border-tertiary/50 bg-ColorPalette-bg-quaternary/95 relative flex flex-shrink-0 items-center justify-between border-b px-6 py-4 backdrop-blur-md"
-      >
-        <!-- Left: title + speed counters.
-             Both counters are wrapped in a tight-gap sub-flex so they sit flush
-             against each other and close to the title. Fixed widths + tabular-nums
-             prevent any positional shift as values change. -->
-        <div class="flex items-center gap-3 text-sm">
-          <h2 class="text-ColorPalette-text-secondary shrink-0 font-bold">Bandwidth</h2>
-          <div class="flex shrink-0 items-center gap-2">
-            <!-- Download: [icon] [value] [unit] -->
-            <div class="flex w-[88px] shrink-0 items-center gap-0.5">
-              <ArrowDownBox class="h-3.5 w-3.5 shrink-0 text-blue-500 dark:text-blue-400" />
-              <span class="font-semibold text-blue-500 tabular-nums dark:text-blue-400"
-                >{fmtBps(live.dl)[0]}</span
-              >
-              <span class="text-xs text-blue-400/60 dark:text-blue-500/60"
-                >{fmtBps(live.dl)[1]}</span
-              >
-            </div>
-            <!-- Upload: [value] [unit] [icon] -->
-            <div class="flex w-[88px] shrink-0 items-center gap-0.5">
-              <span class="font-semibold text-purple-500 tabular-nums dark:text-purple-400"
-                >{fmtBps(live.ul)[0]}</span
-              >
-              <span class="text-xs text-purple-400/60 dark:text-purple-500/60"
-                >{fmtBps(live.ul)[1]}</span
-              >
-              <ArrowUpBox class="h-3.5 w-3.5 shrink-0 text-purple-500 dark:text-purple-400" />
-            </div>
+      <!-- Left: title + speed counters.
+           Both counters are wrapped in a tight-gap sub-flex so they sit flush
+           against each other and close to the title. Fixed widths + tabular-nums
+           prevent any positional shift as values change. -->
+      <div class="flex items-center gap-3 text-sm">
+        <h2 class="text-ColorPalette-text-secondary shrink-0 font-bold">Bandwidth</h2>
+        <div class="flex shrink-0 items-center gap-2">
+          <!-- Download: [icon] [value] [unit] -->
+          <div class="flex w-[88px] shrink-0 items-center gap-0.5">
+            <ArrowDownBox class="h-3.5 w-3.5 shrink-0 text-blue-500 dark:text-blue-400" />
+            <span class="font-semibold text-blue-500 tabular-nums dark:text-blue-400"
+              >{fmtBps(live.dl)[0]}</span
+            >
+            <span class="text-xs text-blue-400/60 dark:text-blue-500/60">{fmtBps(live.dl)[1]}</span>
+          </div>
+          <!-- Upload: [value] [unit] [icon] -->
+          <div class="flex w-[88px] shrink-0 items-center gap-0.5">
+            <span class="font-semibold text-purple-500 tabular-nums dark:text-purple-400"
+              >{fmtBps(live.ul)[0]}</span
+            >
+            <span class="text-xs text-purple-400/60 dark:text-purple-500/60"
+              >{fmtBps(live.ul)[1]}</span
+            >
+            <ArrowUpBox class="h-3.5 w-3.5 shrink-0 text-purple-500 dark:text-purple-400" />
           </div>
         </div>
-
-        <!-- Time counter: absolutely centered across the full modal width.
-             Priority: hover-point time → panned right-edge time → zoom-window when hovering.
-             pointer-events-none prevents it from intercepting clicks on the header. -->
-        <div
-          class="pointer-events-none absolute inset-x-0 flex justify-center text-xs"
-          aria-live="polite"
-        >
-          {#if live.isHover && live.ts !== null}
-            <span class="text-ColorPalette-text-quarternary italic">{timeSince(live.ts)}</span>
-          {:else if panRightEdgeTs !== null}
-            <span class="text-ColorPalette-text-quarternary italic"
-              >{timeSince(panRightEdgeTs)}</span
-            >
-          {:else if hovering}
-            <span class="text-ColorPalette-text-quarternary">{fmtWin(timeWin)} window</span>
-          {/if}
-        </div>
-
-        <!-- Right: close button -->
-        <button
-          onclick={closeModal}
-          class="bg-ColorPalette-bg-quinary hover:bg-ColorPalette-button-bg-hover-tertiary text-ColorPalette-text-quinary hover:text-ColorPalette-modal-tab-text-hover-secondary shrink-0 rounded-md p-2 transition-colors"
-          aria-label="Close bandwidth graph"
-        >
-          <Close class="h-4 w-4" />
-        </button>
       </div>
 
-      <!-- Modal graph content — no horizontal padding so SVG touches modal borders -->
-      {#if phase === 'open'}
-        <div
-          role="application"
-          aria-label="Bandwidth graph interactive area"
-          class="flex flex-col"
-          style="height: calc(100% - 73px);"
-          use:nonPassiveWheel={onWheel}
-          onmouseenter={onEnter}
-          onmouseleave={onLeave}
-          onmousemove={onModalMove}
-        >
-          <!-- Full-width SVG (no padding — touches modal left and right borders) -->
-          <div bind:clientWidth={modalCtnrW} class="min-h-0 flex-1">
-            {#if modalCtnrW > 0}
-              {@const mH = Math.max(60, pH - 120)}
-              {@const anim = panEndTimestamp !== null ? 0 : animOff}
-              {@const P = buildPaths(modalCtnrW, mH, anim)}
-              {@const CH = getCH(modalCtnrW, mH, anim)}
-              {@const rawMax = aggData.dl.length ? Math.max(...aggData.dl, ...aggData.ul) : 0}
-              <svg
-                bind:this={modalSvgEl}
-                width={modalCtnrW}
-                height={mH}
-                class="block"
-                style="overflow: hidden;"
-              >
-                <defs>
-                  <linearGradient id="bw-dl-mo" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.28" />
-                    <stop offset="100%" stop-color="#3b82f6" stop-opacity="0" />
-                  </linearGradient>
-                  <linearGradient id="bw-ul-mo" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stop-color="#a855f7" stop-opacity="0.28" />
-                    <stop offset="100%" stop-color="#a855f7" stop-opacity="0" />
-                  </linearGradient>
-                  <clipPath id="bw-clip-mo">
-                    <rect x="0" y="0" width={modalCtnrW} height={mH - GRAPH_MB} />
-                  </clipPath>
-                </defs>
+      <!-- Time counter: absolutely centered across the full modal width.
+           Priority: hover-point time → panned right-edge time → zoom-window when hovering.
+           pointer-events-none prevents it from intercepting clicks on the header. -->
+      <div
+        class="pointer-events-none absolute inset-x-0 flex justify-center text-xs"
+        aria-live="polite"
+      >
+        {#if live.isHover && live.ts !== null}
+          <span class="text-ColorPalette-text-quarternary italic">{timeSince(live.ts)}</span>
+        {:else if panRightEdgeTs !== null}
+          <span class="text-ColorPalette-text-quarternary italic">{timeSince(panRightEdgeTs)}</span>
+        {:else if hovering}
+          <span class="text-ColorPalette-text-quarternary">{fmtWin(timeWin)} window</span>
+        {/if}
+      </div>
 
-                {#if P}
-                  <g clip-path="url(#bw-clip-mo)">
-                    <path d={P.dlArea} fill="url(#bw-dl-mo)" />
-                    <path d={P.ulArea} fill="url(#bw-ul-mo)" />
-                    <path
-                      d={P.dlLine}
-                      fill="none"
-                      stroke="#3b82f6"
-                      stroke-width="2"
-                      stroke-opacity="0.85"
-                    />
-                    <path
-                      d={P.ulLine}
-                      fill="none"
-                      stroke="#a855f7"
-                      stroke-width="2"
-                      stroke-opacity="0.85"
-                    />
-                    {#if CH}
-                      <line
-                        x1={CH.x}
-                        y1={0}
-                        x2={CH.x}
-                        y2={mH}
-                        stroke="rgba(156,163,175,0.3)"
-                        stroke-width="1"
-                        stroke-dasharray="3 3"
-                      />
-                      <circle cx={CH.x} cy={CH.dlY} r="4" fill="#3b82f6" />
-                      <circle cx={CH.x} cy={CH.ulY} r="4" fill="#a855f7" />
-                    {/if}
-                  </g>
-                  {@const maxLabel = fmtBps(rawMax)}
-                  <text
-                    x={modalCtnrW - 4}
-                    y="14"
-                    text-anchor="end"
-                    fill="rgba(156,163,175,0.5)"
-                    font-size="9">{maxLabel[0]} {maxLabel[1]}</text
-                  >
-                  <text
-                    x={modalCtnrW - 4}
-                    y={mH - 4}
-                    text-anchor="end"
-                    fill="rgba(156,163,175,0.4)"
-                    font-size="9"
-                    >{displayMinV > 0
-                      ? `${fmtBps(displayMinV)[0]} ${fmtBps(displayMinV)[1]}`
-                      : '0'}</text
-                  >
-                {:else}
-                  <text
-                    x={modalCtnrW / 2}
-                    y={mH / 2}
-                    text-anchor="middle"
-                    dominant-baseline="middle"
-                    fill="rgba(156,163,175,0.4)"
-                    font-size="11">Waiting for data...</text
-                  >
-                {/if}
-              </svg>
-            {/if}
-          </div>
+      <!-- Right: close button -->
+      <button
+        onclick={close}
+        class="bg-ColorPalette-bg-quinary hover:bg-ColorPalette-button-bg-hover-tertiary text-ColorPalette-text-quinary hover:text-ColorPalette-modal-tab-text-hover-secondary shrink-0 rounded-md p-2 transition-colors"
+        aria-label="Close bandwidth graph"
+      >
+        <Close class="h-4 w-4" />
+      </button>
+    </div>
 
-          <!-- Legend and zoom hint — padded from modal edges -->
-          <div
-            class="text-ColorPalette-text-quarternary flex items-center justify-between px-6 py-3 text-xs"
-          >
-            <div class="flex gap-5">
-              <span class="flex items-center gap-1.5">
-                <span class="inline-block h-px w-4 bg-blue-500"></span>
-                Download
-              </span>
-              <span class="flex items-center gap-1.5">
-                <span class="inline-block h-px w-4 bg-purple-500"></span>
-                Upload
-              </span>
-            </div>
-            <span class="italic"
-              >Hold Control + scroll to zoom ({fmtWin(timeWin)} window) &bull; Scroll left / right to
-              pan history</span
+    <!-- Modal graph content — no horizontal padding so SVG touches modal borders -->
+    {#if phase === 'open'}
+      <div
+        role="application"
+        aria-label="Bandwidth graph interactive area"
+        class="flex flex-col"
+        style="height: calc(100% - 73px);"
+        use:nonPassiveWheel={onWheel}
+        onmouseenter={onEnter}
+        onmouseleave={onLeave}
+        onmousemove={onModalMove}
+      >
+        <!-- Full-width SVG (no padding — touches modal left and right borders) -->
+        <div bind:clientWidth={modalCtnrW} class="min-h-0 flex-1">
+          {#if modalCtnrW > 0}
+            {@const mH = Math.max(60, panelHeight - 120)}
+            {@const anim = panEndTimestamp !== null ? 0 : animOff}
+            {@const P = buildPaths(modalCtnrW, mH, anim)}
+            {@const CH = getCH(modalCtnrW, mH, anim)}
+            {@const rawMax = aggData.dl.length ? Math.max(...aggData.dl, ...aggData.ul) : 0}
+            <svg
+              bind:this={modalSvgEl}
+              width={modalCtnrW}
+              height={mH}
+              class="block"
+              style="overflow: hidden;"
             >
-          </div>
+              <defs>
+                <linearGradient id="bw-dl-mo" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.28" />
+                  <stop offset="100%" stop-color="#3b82f6" stop-opacity="0" />
+                </linearGradient>
+                <linearGradient id="bw-ul-mo" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#a855f7" stop-opacity="0.28" />
+                  <stop offset="100%" stop-color="#a855f7" stop-opacity="0" />
+                </linearGradient>
+                <clipPath id="bw-clip-mo">
+                  <rect x="0" y="0" width={modalCtnrW} height={mH - GRAPH_MB} />
+                </clipPath>
+              </defs>
 
-          <!-- Alt speed badge (only when enabled) -->
-          {#if altSpeedOn}
-            <div class="flex justify-center pb-3">
-              <span
-                class="rounded bg-blue-100 px-2 py-0.5 text-xs text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"
-              >
-                Alt Speed Active
-              </span>
-            </div>
+              {#if P}
+                <g clip-path="url(#bw-clip-mo)">
+                  <path d={P.dlArea} fill="url(#bw-dl-mo)" />
+                  <path d={P.ulArea} fill="url(#bw-ul-mo)" />
+                  <path
+                    d={P.dlLine}
+                    fill="none"
+                    stroke="#3b82f6"
+                    stroke-width="2"
+                    stroke-opacity="0.85"
+                  />
+                  <path
+                    d={P.ulLine}
+                    fill="none"
+                    stroke="#a855f7"
+                    stroke-width="2"
+                    stroke-opacity="0.85"
+                  />
+                  {#if CH}
+                    <line
+                      x1={CH.x}
+                      y1={0}
+                      x2={CH.x}
+                      y2={mH}
+                      stroke="rgba(156,163,175,0.3)"
+                      stroke-width="1"
+                      stroke-dasharray="3 3"
+                    />
+                    <circle cx={CH.x} cy={CH.dlY} r="4" fill="#3b82f6" />
+                    <circle cx={CH.x} cy={CH.ulY} r="4" fill="#a855f7" />
+                  {/if}
+                </g>
+                {@const maxLabel = fmtBps(rawMax)}
+                <text
+                  x={modalCtnrW - 4}
+                  y="14"
+                  text-anchor="end"
+                  fill="rgba(156,163,175,0.5)"
+                  font-size="9">{maxLabel[0]} {maxLabel[1]}</text
+                >
+                <text
+                  x={modalCtnrW - 4}
+                  y={mH - 4}
+                  text-anchor="end"
+                  fill="rgba(156,163,175,0.4)"
+                  font-size="9"
+                  >{displayMinV > 0
+                    ? `${fmtBps(displayMinV)[0]} ${fmtBps(displayMinV)[1]}`
+                    : '0'}</text
+                >
+              {:else}
+                <text
+                  x={modalCtnrW / 2}
+                  y={mH / 2}
+                  text-anchor="middle"
+                  dominant-baseline="middle"
+                  fill="rgba(156,163,175,0.4)"
+                  font-size="11">Waiting for data...</text
+                >
+              {/if}
+            </svg>
           {/if}
         </div>
-      {/if}
-    </div>
-  </div>
-{/if}
+
+        <!-- Legend and zoom hint — padded from modal edges -->
+        <div
+          class="text-ColorPalette-text-quarternary flex items-center justify-between px-6 py-3 text-xs"
+        >
+          <div class="flex gap-5">
+            <span class="flex items-center gap-1.5">
+              <span class="inline-block h-px w-4 bg-blue-500"></span>
+              Download
+            </span>
+            <span class="flex items-center gap-1.5">
+              <span class="inline-block h-px w-4 bg-purple-500"></span>
+              Upload
+            </span>
+          </div>
+          <span class="italic"
+            >Hold Control + scroll to zoom ({fmtWin(timeWin)} window) &bull; Scroll left / right to pan
+            history</span
+          >
+        </div>
+
+        <!-- Alt speed badge (only when enabled) -->
+        {#if altSpeedOn}
+          <div class="flex justify-center pb-3">
+            <span
+              class="rounded bg-blue-100 px-2 py-0.5 text-xs text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"
+            >
+              Alt Speed Active
+            </span>
+          </div>
+        {/if}
+      </div>
+    {/if}
+  {/snippet}
+</FlyStretchModal>
