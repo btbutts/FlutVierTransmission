@@ -42,6 +42,8 @@ interface Props {
   animMs?: number;
   /** aria-label applied to the dialog element */
   ariaLabel?: string;
+  /** Called after the close animation completes. Use for post-close cleanup in the parent. */
+  onClosed?: () => void;
   /**
    * Modal content snippet. Receives:
    *   phase       — current animation phase; gate expensive renders behind `phase === 'open'`
@@ -58,6 +60,7 @@ let {
   maxHeight = 440,
   animMs = 420,
   ariaLabel = 'Modal dialog',
+  onClosed,
   children
 }: Props = $props();
 
@@ -127,6 +130,7 @@ function runClose() {
     showPortal = false;
     phase = 'closed';
     open = false;
+    onClosed?.();
   }, animMs);
 }
 

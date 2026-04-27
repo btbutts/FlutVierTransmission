@@ -7,16 +7,20 @@ interface SettingsButtonProps {
   onclick?: () => void;
   /** Optional Tailwind classes to append (e.g., for positioning) */
   class?: string;
+  /** Bindable ref to the underlying button element — use to get its DOMRect for animations */
+  ref?: HTMLButtonElement | null;
 }
 
 // prettier-ignore
 let {
   onclick = () => {},
-  class: classOverride = 'relative'
+  class: classOverride = 'relative',
+  ref = $bindable<HTMLButtonElement | null>(null)
 }: SettingsButtonProps = $props();
 </script>
 
 <button
+  bind:this={ref}
   {onclick}
   class="group {classOverride} inline-flex h-9.5 w-9.5 shrink-0 items-center justify-center rounded-md bg-gray-700/90
   p-0 text-white shadow-sm backdrop-blur-sm transition-all duration-200 hover:bg-gray-600 focus:outline-none active:scale-[0.97] active:bg-gray-800

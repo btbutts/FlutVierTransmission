@@ -4,19 +4,22 @@ import { onMount } from 'svelte';
 import { browser } from '$app/environment';
 import { callRpc, refreshSession, session, torrents, updateBlocklist, updateSession } from '$lib';
 
-import { getCompletedTorrentPaths, windowPopUp } from '$lib/helpers';
+import { getCompletedTorrentPaths } from '$lib/helpers';
 import { Close, InformationVariantCircleOutline, LanCheck, LanDisconnect, Wan } from '$lib/plugins';
 
 import DDSelector from './DDSelector.svelte';
+import FlyStretchModal from './FlyStretchModal.svelte';
 import SaveButton from './SaveButton.svelte';
 import TimeDDSelector from './TimeDDSelector.svelte';
 
 interface Props {
   /** Controls modal visibility — bindable so parent can open/close */
   open?: boolean;
+  /** Called at open time and close time to get the source/return rect for the fly animation. */
+  getTriggerRect?: () => DOMRect | null;
 }
 
-let { open = $bindable(false) }: Props = $props();
+let { open = $bindable(false), getTriggerRect = () => null }: Props = $props();
 
 // ── Theme ─────────────────────────────────────────────────────────────────────
 const themePreferenceKey = 'flutvierThemeMode';
@@ -183,8 +186,10 @@ async function saveSettings() {
   }
 }
 
-function closeSettings() {
-  open = false;
+// Runs after the FlyStretchModal close animation completes.
+// Keeps visible state intact during the shrink-back animation,
+// then resets everything once the panel has fully left the screen.
+function handleClosed() {
   tempSettings = {};
   saveStatus = 'idle';
   portTestState = 'idle';
@@ -277,20 +282,16 @@ $effect(() => {
 });
 </script>
 
-{#if open}
-  <div
-    use:windowPopUp
-    class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-    role="dialog"
-    tabindex="-1"
-    aria-modal="true"
-    aria-labelledby="settings-title"
-    onclick={(event) => event.target === event.currentTarget && closeSettings()}
-    onkeydown={(event) => event.key === 'Escape' && closeSettings()}
-  >
-    <div
-      class="bg-ColorPalette-bg-secondary/95 ring-ColorPalette-modal-ring-secondary/50 mx-4 flex h-[630px] max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-3xl shadow-[0_0_0_1px_rgba(0,0,0,0.15),0_0_40px_16px_rgba(0,0,0,0.65),0_0_120px_60px_rgba(0,0,0,0.5)] ring-1 backdrop-blur-xl"
-    >
+<FlyStretchModal
+  bind:open
+  {getTriggerRect}
+  maxWidth={896}
+  maxHeight={630}
+  ariaLabel="Settings"
+  onClosed={handleClosed}
+>
+  {#snippet children(_phase, close, _panelHeight)}
+    <div class="flex h-full flex-col overflow-hidden">
       <!-- Sticky Header -->
       <div
         class="border-ColorPalette-border-tertiary/50 bg-ColorPalette-bg-quaternary/95 sticky top-0 z-20 flex flex-shrink-0 items-center justify-between rounded-t-3xl border-b p-6 backdrop-blur-md"
@@ -299,7 +300,7 @@ $effect(() => {
           Settings
         </h2>
         <button
-          onclick={closeSettings}
+          onclick={close}
           class="bg-ColorPalette-bg-quinary hover:bg-ColorPalette-button-bg-hover-tertiary text-ColorPalette-text-quinary hover:text-ColorPalette-modal-tab-text-hover-secondary rounded-md p-2 transition-colors"
           aria-label="Close"
         >
@@ -1224,5 +1225,5 @@ $effect(() => {
         {/if}
       </div>
     </div>
-  </div>
-{/if}
+  {/snippet}
+</FlyStretchModal>

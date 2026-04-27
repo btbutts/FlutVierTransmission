@@ -1,5 +1,6 @@
 <!-- src/lib/components/AddTorrentMasterModal.svelte -->
 <script lang="ts">
+import { tick } from 'svelte';
 import { addTorrent, addTorrentMetainfo, error, refreshAll } from '$lib';
 
 import { windowPopUp } from '$lib/helpers';
@@ -11,9 +12,14 @@ import AddTorrentChildModal from './AddTorrentChildModal.svelte';
 interface Props {
   /** Controls modal visibility — bindable so parent can open/close */
   open?: boolean;
+  /**
+   * Called at open time and close time to get the source/return DOMRect for the
+   * fly animation. Return null to skip the fly effect (modal fades from centre).
+   */
+  getTriggerRect?: () => DOMRect | null;
 }
 
-let { open = $bindable(false) }: Props = $props();
+let { open = $bindable(false), getTriggerRect = () => null }: Props = $props();
 
 // ── Torrent entry state ────────────────────────────────────────────────────────
 let newTorrentUrl = $state('');
@@ -29,6 +35,13 @@ let masterCardElement = $state<HTMLDivElement | undefined>(undefined);
 let childCardElement = $state<HTMLDivElement | undefined>(undefined);
 let isAnimating = $state(false);
 
+// ── Portal & backdrop visibility ───────────────────────────────────────────────
+// showPortal stays true during the close animation so the portal stays mounted.
+// open is only set to false after destroyModal() runs (post-animation).
+let showPortal = $state(false);
+let backdropVisible = $state(false);
+let isClosing = $state(false);
+
 // ── Child activation ───────────────────────────────────────────────────────────
 // Flipping this to true passes the current queue (selectedFiles + newTorrentUrl)
 // to the child card and triggers its file-fetch workflow. Flipping it back to
@@ -36,6 +49,7 @@ let isAnimating = $state(false);
 let childActive = $state(false);
 
 // Animation timing constants
+const ANIM_MS = 420; // fly-open / fly-close duration
 const INCOMING_MS = 800; // incoming card: ease-out slide to centre
 const OUTGOING_MS = 500; // outgoing card: ease-in slide off-screen (starts at proximity)
 // 80px accounts for one RAF frame of card travel (~16ms) plus the frame in which
@@ -46,6 +60,15 @@ const PROXIMITY_PX = 175;
 const totalItems = $derived(selectedFiles.length + (newTorrentUrl.trim() ? 1 : 0));
 const startLabel = $derived(totalItems > 1 ? 'Start Torrents' : 'Start Torrent');
 const canAdd = $derived(newTorrentUrl.trim().length > 0 || selectedFiles.length > 0);
+
+// ── Watch open prop ────────────────────────────────────────────────────────────
+// When parent sets open = true, mount the portal then run the open animation.
+$effect(() => {
+  if (open && !showPortal && !isClosing) {
+    showPortal = true;
+    void tick().then(runOpenAnimation);
+  }
+});
 
 // ── Animation helpers ──────────────────────────────────────────────────────────
 /**
@@ -70,17 +93,143 @@ function reflow(el: HTMLElement) {
   void el.getBoundingClientRect();
 }
 
-// ── Actions ────────────────────────────────────────────────────────────────────
-function closeModal() {
+// ── Open animation ─────────────────────────────────────────────────────────────
+/**
+ * Fly the master card from the trigger element rect to its natural centred position.
+ * Called after the portal DOM has mounted (via tick().then()).
+ */
+function runOpenAnimation() {
+  if (!masterCardElement) return;
+  isAnimating = true;
+
+  const triggerRect = getTriggerRect();
+  const cardRect = masterCardElement.getBoundingClientRect();
+
+  if (triggerRect) {
+    // Compute the translate+scale that maps the card's centre onto the trigger's centre.
+    const dx = triggerRect.left + triggerRect.width / 2 - (cardRect.left + cardRect.width / 2);
+    const dy = triggerRect.top + triggerRect.height / 2 - (cardRect.top + cardRect.height / 2);
+    const sx = triggerRect.width / cardRect.width;
+    const sy = triggerRect.height / cardRect.height;
+
+    // Snap card to start position (no transition) then reflow so the browser
+    // records this as the "before" state before the transition fires.
+    masterCardElement.style.transition = 'none';
+    masterCardElement.style.transform = `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`;
+    masterCardElement.style.opacity = '0';
+    reflow(masterCardElement);
+  }
+
+  // Fade backdrop in concurrently with the card animation.
+  backdropVisible = true;
+  masterCardElement.style.transition = `transform ${ANIM_MS}ms cubic-bezier(0.4,0,0.2,1), opacity ${ANIM_MS}ms`;
+  masterCardElement.style.transform = 'translateX(0)';
+  masterCardElement.style.opacity = '1';
+
+  setTimeout(() => {
+    isAnimating = false;
+  }, ANIM_MS);
+}
+
+// ── Destroy portal ─────────────────────────────────────────────────────────────
+/**
+ * Called after the close animation completes. Unmounts the portal and resets state.
+ * DOM refs become undefined on unmount; no style cleanup needed —
+ * the {#if showPortal} block remounts fresh elements each time.
+ */
+function destroyModal() {
+  isClosing = false;
   childActive = false;
+  showPortal = false;
   open = false;
+  backdropVisible = false;
   newTorrentUrl = '';
   selectedFiles = [];
   isAnimating = false;
-  // DOM refs become undefined on unmount; no style cleanup needed —
-  // the {#if open} block remounts fresh elements each time.
 }
 
+// ── Close animations ───────────────────────────────────────────────────────────
+/**
+ * Fly the master card back to the trigger element, then destroy the portal.
+ * Called when closing from the master card (Cancel / Add Torrent success / backdrop / Escape).
+ */
+function runCloseFromMaster() {
+  if (isClosing) return;
+  isClosing = true;
+  backdropVisible = false;
+
+  if (!masterCardElement) {
+    destroyModal();
+    return;
+  }
+
+  const triggerRect = getTriggerRect();
+  const cardRect = masterCardElement.getBoundingClientRect();
+
+  if (triggerRect) {
+    const dx = triggerRect.left + triggerRect.width / 2 - (cardRect.left + cardRect.width / 2);
+    const dy = triggerRect.top + triggerRect.height / 2 - (cardRect.top + cardRect.height / 2);
+    const sx = triggerRect.width / cardRect.width;
+    const sy = triggerRect.height / cardRect.height;
+
+    masterCardElement.style.transition = `transform ${ANIM_MS}ms cubic-bezier(0.4,0,0.2,1), opacity ${ANIM_MS}ms`;
+    masterCardElement.style.transform = `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`;
+    masterCardElement.style.opacity = '0';
+  } else {
+    masterCardElement.style.transition = `opacity ${ANIM_MS}ms`;
+    masterCardElement.style.opacity = '0';
+  }
+
+  setTimeout(destroyModal, ANIM_MS);
+}
+
+/**
+ * Fly the child card back to the trigger element, then destroy the portal.
+ * Called when closing from the child card (Cancel / Add Torrent success).
+ */
+function runCloseFromChild() {
+  if (isClosing) return;
+  isClosing = true;
+  backdropVisible = false;
+
+  if (!childCardElement) {
+    destroyModal();
+    return;
+  }
+
+  const triggerRect = getTriggerRect();
+  const cardRect = childCardElement.getBoundingClientRect();
+
+  if (triggerRect) {
+    const dx = triggerRect.left + triggerRect.width / 2 - (cardRect.left + cardRect.width / 2);
+    const dy = triggerRect.top + triggerRect.height / 2 - (cardRect.top + cardRect.height / 2);
+    const sx = triggerRect.width / cardRect.width;
+    const sy = triggerRect.height / cardRect.height;
+
+    childCardElement.style.transition = `transform ${ANIM_MS}ms cubic-bezier(0.4,0,0.2,1), opacity ${ANIM_MS}ms`;
+    childCardElement.style.transform = `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`;
+    childCardElement.style.opacity = '0';
+  } else {
+    childCardElement.style.transition = `opacity ${ANIM_MS}ms`;
+    childCardElement.style.opacity = '0';
+  }
+
+  setTimeout(destroyModal, ANIM_MS);
+}
+
+/**
+ * Dispatches to the appropriate close animation based on which card is active.
+ * Used by backdrop click and Escape key.
+ */
+function handleClose() {
+  if (childActive) {
+    runCloseFromChild();
+  } else {
+    runCloseFromMaster();
+  }
+}
+
+// ── Child slide animations ─────────────────────────────────────────────────────
 /**
  * Slide the child card in from the right, push the master card out to the left.
  *
@@ -181,6 +330,7 @@ function closeChild() {
   requestAnimationFrame(checkProximity);
 }
 
+// ── File handling ──────────────────────────────────────────────────────────────
 function removeFile(index: number) {
   selectedFiles = selectedFiles.filter((_, i) => i !== index);
 }
@@ -226,7 +376,7 @@ async function handleAddTorrent() {
   }
   try {
     await Promise.all(promises);
-    closeModal();
+    runCloseFromMaster();
     await refreshAll();
   } catch (err: unknown) {
     error.set(err instanceof Error ? err.message : 'Add failed');
@@ -234,23 +384,33 @@ async function handleAddTorrent() {
 }
 </script>
 
-{#if open}
+{#if showPortal}
   <!--
-    Outer overlay: bg-black/50 backdrop + overflow-hidden to clip both cards
-    during the slide animations so they never bleed outside the viewport.
-    onclick with target === currentTarget enables backdrop-click-to-close;
-    the pointer-events-none centering wrappers pass unhandled clicks through.
+    Outer overlay: overflow-hidden to clip both cards during the slide animations
+    so they never bleed outside the viewport. onclick with target === currentTarget
+    enables backdrop-click-to-close; the pointer-events-none centering wrappers
+    pass unhandled clicks through to this element.
+    Backdrop colour is now on a separate child div (pointer-events:none) so its
+    opacity can be animated independently of the portal mount/unmount lifecycle.
   -->
   <div
     use:windowPopUp
-    class="fixed inset-0 z-50 overflow-hidden bg-black/50"
+    class="fixed inset-0 z-50 overflow-hidden"
     role="dialog"
     tabindex="-1"
     aria-modal="true"
     aria-labelledby="add-torrent-title"
-    onclick={(event) => event.target === event.currentTarget && closeModal()}
-    onkeydown={(event) => event.key === 'Escape' && closeModal()}
+    onclick={(event) => event.target === event.currentTarget && handleClose()}
+    onkeydown={(event) => event.key === 'Escape' && handleClose()}
   >
+    <!-- Animatable backdrop: pointer-events none so clicks pass through to the outer div -->
+    <div
+      class="absolute inset-0 bg-black/50"
+      style="pointer-events: none; opacity: {backdropVisible
+        ? 1
+        : 0}; transition: opacity {ANIM_MS}ms;"
+    ></div>
+
     <!-- Hidden native file picker — triggered programmatically by Browse button -->
     <input
       bind:this={fileInputEl}
@@ -266,15 +426,15 @@ async function handleAddTorrent() {
       The outer div is the flex-centering wrapper (pointer-events-none so
       backdrop clicks pass through). The inner div is the actual card —
       bind:this gives us the DOM ref for direct style manipulation.
-      The initial `style` positions it at centre (translateX 0); the JS
-      animation functions overwrite transform/transition directly from there.
-      box-shadow is inlined here (not driven by JS) so it persists at all times.
+      opacity starts at 0 to prevent a flash before runOpenAnimation() fires;
+      the open animation transitions it to 1. box-shadow is inlined here
+      (not driven by JS) so it persists at all times.
     -->
     <div class="pointer-events-none absolute inset-0 flex items-center justify-center p-4">
       <div
         bind:this={masterCardElement}
         class="bg-ColorPalette-bg-secondary ring-ColorPalette-modal-ring-secondary/50 pointer-events-auto max-h-[70vh] w-full max-w-md overflow-hidden rounded-xl ring-1"
-        style="transform: translateX(0); box-shadow: 0 0 0 1px rgba(0,0,0,0.15), 0 0 40px 16px rgba(0,0,0,0.65), 0 0 120px 60px rgba(0,0,0,0.5);"
+        style="transform: translateX(0); opacity: 0; box-shadow: 0 0 0 1px rgba(0,0,0,0.15), 0 0 40px 16px rgba(0,0,0,0.65), 0 0 120px 60px rgba(0,0,0,0.5);"
       >
         <div class="max-h-[70vh] overflow-y-auto overscroll-contain p-8">
           <h2
@@ -359,7 +519,7 @@ async function handleAddTorrent() {
               />
               <button
                 type="button"
-                onclick={closeModal}
+                onclick={runCloseFromMaster}
                 class="flex-1 rounded-md bg-gray-500 px-4 py-2 font-medium text-white shadow-sm transition-all hover:bg-gray-600"
               >
                 Cancel
@@ -377,6 +537,7 @@ async function handleAddTorrent() {
       right via the initial translateX(150vw) inline style. The JS proximity
       loop writes transform/transition directly on this element.
       AddTorrentChildModal sets pointer-events-auto on its own root card.
+      onClose / onDone fly the child back to the trigger button before destroying.
     -->
     <div class="pointer-events-none absolute inset-0 flex items-center justify-center p-4">
       <div
@@ -389,9 +550,9 @@ async function handleAddTorrent() {
           files={selectedFiles}
           magnetUrl={newTorrentUrl}
           active={childActive}
-          onClose={closeModal}
+          onClose={runCloseFromChild}
           onBack={closeChild}
-          onDone={closeModal}
+          onDone={runCloseFromChild}
         />
       </div>
     </div>

@@ -41,7 +41,9 @@ const totalUploaded = $derived(
 const activeCount = $derived($torrents.filter((t: Torrent) => [4, 5, 6].includes(t.status)).length);
 
 let addTorrentModalOpen = $state(false);
+let addTorrentButtonRef = $state<HTMLButtonElement | null>(null);
 let settingsOpen = $state(false);
+let settingsButtonRef = $state<HTMLButtonElement | null>(null);
 let { children } = $props();
 
 const scrollSync = createHorizontalScrollSync();
@@ -85,6 +87,7 @@ $effect(() => {
     class="text-ColorPalette-text-primary/80 border-ColorPalette-border-secondary/50 bg-ColorPalette-bg-secondary/80 fixed top-0 right-0 left-0 z-30 flex h-16 items-center justify-between border-b px-4 shadow-sm backdrop-blur"
   >
     <SettingsButton
+      bind:ref={settingsButtonRef}
       onclick={() => (settingsOpen = true)}
       class="absolute top-1/2 left-4 -translate-y-1/2"
     />
@@ -98,6 +101,7 @@ $effect(() => {
       </div>
       <div class="flex items-center space-x-2">
         <AddTorrentButton
+          bind:ref={addTorrentButtonRef}
           onclick={() => {
             addTorrentModalOpen = true;
           }}
@@ -173,10 +177,16 @@ $effect(() => {
   </div>
 
   <!-- Add Torrent Modal -->
-  <AddTorrentMasterModal bind:open={addTorrentModalOpen} />
+  <AddTorrentMasterModal
+    bind:open={addTorrentModalOpen}
+    getTriggerRect={() => addTorrentButtonRef?.getBoundingClientRect() ?? null}
+  />
 
   <!-- Settings Modal (always mounted so theme effects run at app start) -->
-  <SettingsModal bind:open={settingsOpen} />
+  <SettingsModal
+    bind:open={settingsOpen}
+    getTriggerRect={() => settingsButtonRef?.getBoundingClientRect() ?? null}
+  />
 
   <!-- Peers tooltip portal: always mounted here at layout root, outside all overflow/backdrop containers -->
   <PeersTooltipPortal />
