@@ -4,13 +4,14 @@ import { onMount } from 'svelte';
 import { browser } from '$app/environment';
 import { callRpc, refreshSession, session, torrents, updateBlocklist, updateSession } from '$lib';
 
-import { getCompletedTorrentPaths } from '$lib/helpers';
+import { getCompletedTorrentPaths, hideCustomTooltip, showCustomTooltip } from '$lib/helpers';
 import { Close, InformationVariantCircleOutline, LanCheck, LanDisconnect, Wan } from '$lib/plugins';
 
 import DDSelector from './DDSelector.svelte';
 import FlyStretchAnimationWrapper from './FlyStretchAnimWrapper.svelte';
 import SaveButton from './SaveButton.svelte';
 import TimeDDSelector from './TimeDDSelector.svelte';
+import Tooltip from './Tooltip.svelte';
 
 interface Props {
   /** Controls modal visibility — bindable so parent can open/close */
@@ -49,6 +50,13 @@ const settingsTabs: Array<{ id: SettingsTab; label: string }> = [
 // Must match BW_SERVER_PREF_KEY in appstate.ts.
 const bwServerPrefKey = 'flutvierStoreBandwidthOnServer';
 let storeBandwidthOnServer = $state(true);
+
+// ── Bandwidth storage tooltip ─────────────────────────────────────────────────
+// The animated modal panel has backdrop-blur-xl, which creates a new CSS
+// containing block for position:fixed children. containingBlockSelector targets
+// that ancestor so showCustomTooltip offsets coordinates to be panel-relative.
+let bwTooltipVisible = $state(false);
+let bwTooltipPos = $state({ x: 0, y: 0 });
 
 // ── Common paths (localStorage) ───────────────────────────────────────────────
 const commonPathsKey = 'flutvierCommonPaths';
@@ -1177,31 +1185,53 @@ $effect(() => {
                     >Store bandwidth utilization snapshot on server</span
                   >
                 </label>
-                <!-- Info icon with tooltip -->
-                <div class="group relative">
-                  <InformationVariantCircleOutline class="h-4 w-4 cursor-help text-gray-400" />
-                  <div
-                    role="tooltip"
-                    class="invisible absolute top-full left-0 z-[60] mt-1 w-96 rounded-lg bg-gray-800/95 px-3 py-2.5 text-xs leading-relaxed text-gray-200 shadow-xl group-hover:visible"
+                <!-- Info icon — hover to reveal Tooltip.svelte -->
+                <button
+                  type="button"
+                  onmouseenter={(e) =>
+                    showCustomTooltip({
+                      triggerEl: e.currentTarget as HTMLElement,
+                      setPos: (pos) => {
+                        bwTooltipPos = pos;
+                      },
+                      setVisible: (v) => {
+                        bwTooltipVisible = v;
+                      },
+                      containingBlockSelector: '.backdrop-blur-xl'
+                    })}
+                  onmouseleave={() =>
+                    hideCustomTooltip((v) => {
+                      bwTooltipVisible = v;
+                    })}
+                  class="cursor-help text-gray-400 hover:text-gray-500 dark:hover:text-gray-300"
+                  aria-label="Information about bandwidth server storage"
+                >
+                  <InformationVariantCircleOutline class="h-4 w-4" />
+                </button>
+                <Tooltip
+                  visible={bwTooltipVisible}
+                  x={bwTooltipPos.x}
+                  y={bwTooltipPos.y}
+                  maxWidth={384}
+                >
+                  <ul
+                    class="list-outside list-disc space-y-2 pl-4 leading-relaxed text-gray-700 dark:text-gray-200"
                   >
-                    <ul class="list-outside list-disc space-y-2 pl-4">
-                      <li>
-                        When enabled, the last five minutes of bandwidth utilization received from
-                        the Transmission RPC server is written to the server every 60 seconds, as
-                        well as immediately upon page refresh.
-                      </li>
-                      <li>
-                        The next time the page loads, if the bandwidth data stored on the server
-                        occurred within the last 12 hours, it will be loaded into the bandwidth
-                        graph.
-                      </li>
-                      <li>
-                        Disabling this setting will rely on local browser-caching only, which cannot
-                        survive a page reload, thus the graph will start anew.
-                      </li>
-                    </ul>
-                  </div>
-                </div>
+                    <li>
+                      When enabled, the last five minutes of bandwidth utilization received from the
+                      Transmission RPC server is written to the server every 60 seconds, as well as
+                      immediately upon page refresh.
+                    </li>
+                    <li>
+                      The next time the page loads, if the bandwidth data stored on the server
+                      occurred within the last 12 hours, it will be loaded into the bandwidth graph.
+                    </li>
+                    <li>
+                      Disabling this setting will rely on local browser-caching only, which cannot
+                      survive a page reload, thus the graph will start anew.
+                    </li>
+                  </ul>
+                </Tooltip>
               </div>
             </div>
           </div>

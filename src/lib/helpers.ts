@@ -3,7 +3,67 @@
 // src/lib/helpers.ts
 
 import { writeAppStateGeoEntry } from './appstate';
-import type { GeoInfo, Torrent } from './types';
+import type { GeoInfo, ShowCustomTooltipOptions, Torrent } from './types';
+
+/**
+ * Shows a `Tooltip.svelte` instance by computing its position and calling the
+ * provided state-setter callbacks. Handles the optional hover delay and
+ * backdrop-filter containing-block offset automatically.
+ *
+ * Returns the pending `setTimeout` handle when `waitBeforeRenderDelay` is set
+ * (so the caller can pass it to `hideCustomTooltip` to cancel it on mouse-leave),
+ * or `null` when the tooltip is shown immediately.
+ */
+export function showCustomTooltip(
+  options: ShowCustomTooltipOptions
+): ReturnType<typeof setTimeout> | null {
+  const {
+    triggerEl,
+    setPos,
+    setVisible,
+    waitBeforeRenderDelay,
+    containingBlockSelector,
+    computePos
+  } = options;
+
+  function applyPosition(): void {
+    const triggerRect = triggerEl.getBoundingClientRect();
+    const containingEl = containingBlockSelector
+      ? (triggerEl.closest(containingBlockSelector) as HTMLElement | null)
+      : null;
+    const containingOrigin = containingEl?.getBoundingClientRect() ?? { top: 0, left: 0 };
+
+    const pos = computePos
+      ? computePos(triggerRect, containingOrigin)
+      : {
+          x: triggerRect.left - containingOrigin.left,
+          y: triggerRect.bottom + 4 - containingOrigin.top
+        };
+
+    setPos(pos);
+    setVisible(true);
+  }
+
+  if (waitBeforeRenderDelay) {
+    return setTimeout(applyPosition, waitBeforeRenderDelay);
+  }
+
+  applyPosition();
+  return null;
+}
+
+/**
+ * Hides a `Tooltip.svelte` instance by calling the provided visibility setter.
+ * When a pending show-delay timer handle is supplied it is cancelled first so
+ * a quick mouse-out before the delay elapses never causes a phantom tooltip.
+ */
+export function hideCustomTooltip(
+  setVisible: (visible: boolean) => void,
+  pendingTimer?: ReturnType<typeof setTimeout> | null
+): void {
+  if (pendingTimer != null) clearTimeout(pendingTimer);
+  setVisible(false);
+}
 
 // Example helper function to create a pop-up element that is appended to the document body
 export function windowPopUp(node: HTMLElement) {

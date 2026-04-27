@@ -4,6 +4,7 @@ import { onMount } from 'svelte';
 import { get } from 'svelte/store';
 import { bandwidthHistory, bandwidthLastPollTime, session } from '$lib';
 
+import { hideCustomTooltip, showCustomTooltip } from '$lib/helpers';
 import { ArrowDownBox, ArrowUpBox, Close } from '$lib/plugins';
 
 import FlyStretchAnimationWrapper from './FlyStretchAnimWrapper.svelte';
@@ -346,47 +347,50 @@ function addDblClick(node: HTMLElement, handler: () => void) {
 function onEnter() {
   hovering = true;
   if (hintTimer) clearTimeout(hintTimer);
-  hintTimer = setTimeout(() => {
-    if (containerEl) {
-      // The sidebar <aside> has backdrop-filter, which creates a new CSS containing block
-      // for position:fixed children. This means the Tooltip's `top/left` are relative to
-      // the sidebar's own origin, not the viewport. We subtract the sidebar's viewport rect
-      // so our viewport-relative calculations produce correct sidebar-relative CSS values.
-      const sidebarEl = containerEl.closest('aside') as HTMLElement | null;
-      const sidebarRect = sidebarEl?.getBoundingClientRect() ?? { top: 0, left: 0 };
-
-      const cR = containerEl.getBoundingClientRect();
+  if (!containerEl) return;
+  // The sidebar <aside> has backdrop-filter, which creates a new CSS containing block
+  // for position:fixed children. containingBlockSelector:'aside' tells showCustomTooltip
+  // to subtract the sidebar's rect so tooltip coordinates are sidebar-relative.
+  // computePos vertically centers the tooltip between the counters area and the SVG
+  // bottom, clamped so it never overflows the sidebar's top or the viewport's bottom.
+  hintTimer = showCustomTooltip({
+    triggerEl: containerEl,
+    setPos: (pos) => {
+      tooltipPos = pos;
+    },
+    setVisible: (v) => {
+      showHint = v;
+    },
+    waitBeforeRenderDelay: HINT_DELAY,
+    containingBlockSelector: 'aside',
+    computePos: (containerRect, sidebarOrigin) => {
       // Vertical range: from the top of the counters readout (skipping the badge slot
       // which is h-5 = 20 px + mb-1 = 4 px = 24 px) to the very bottom of the SVG.
       const badgeSlotH = 24;
-      const rangeTopVp = cR.top + badgeSlotH; // viewport-relative top of readout counters
-      const rangeBottomVp = cR.bottom;         // viewport-relative bottom of SVG
-
+      const rangeTopVp = containerRect.top + badgeSlotH;
+      const rangeBottomVp = containerRect.bottom;
       // 100 px is a generous estimate used only for the clamp; the actual tooltip is ~83 px.
       const tooltipH = 100;
       const idealYVp = (rangeTopVp + rangeBottomVp) / 2 - tooltipH / 2;
       const clampedYVp = Math.max(
-        sidebarRect.top + 8,
+        sidebarOrigin.top + 8,
         Math.min(idealYVp, window.innerHeight - tooltipH - 8)
       );
-
-      tooltipPos = {
-        x: cR.right + 8 - sidebarRect.left, // sidebar-relative (left=0 so no change)
-        y: clampedYVp - sidebarRect.top      // sidebar-relative y
+      return {
+        x: containerRect.right + 8 - sidebarOrigin.left,
+        y: clampedYVp - sidebarOrigin.top
       };
     }
-    showHint = true;
-  }, HINT_DELAY);
+  });
 }
 
 function onLeave() {
   hovering = false;
   mxRatio = null;
-  showHint = false;
-  if (hintTimer) {
-    clearTimeout(hintTimer);
-    hintTimer = null;
-  }
+  hideCustomTooltip((v) => {
+    showHint = v;
+  }, hintTimer);
+  hintTimer = null;
 }
 
 function onSidebarMove(e: MouseEvent) {
@@ -622,7 +626,6 @@ onMount(() => {
         </svg>
       {/if}
     </div>
-
   </div>
 
   <!-- Accessible expand trigger for keyboard navigation -->
@@ -859,7 +862,6 @@ onMount(() => {
             history</span
           >
         </div>
-
       </div>
     {/if}
   {/snippet}
@@ -868,7 +870,13 @@ onMount(() => {
 <!-- Sidebar interaction hint tooltip — appears to the right of the sidebar after the user
      has hovered over the graph for HINT_DELAY ms. Not rendered while the pop-up modal is open
      since the modal provides its own static hint text in its footer. -->
-<Tooltip visible={showHint && !modalOpen} x={tooltipPos.x} y={tooltipPos.y} maxWidth={260} class="whitespace-nowrap">
+<Tooltip
+  visible={showHint && !modalOpen}
+  x={tooltipPos.x}
+  y={tooltipPos.y}
+  maxWidth={260}
+  class="whitespace-nowrap"
+>
   <span class="leading-relaxed text-gray-700 dark:text-gray-200">
     Hold Control + scroll to zoom<br />
     Scroll left / right to pan history<br />

@@ -105,3 +105,43 @@ export interface PeerEntry {
   geo: GeoInfo | null;
   loading: boolean;
 }
+
+/**
+ * Options for the shared `showCustomTooltip` helper in helpers.ts.
+ * Decouples tooltip positioning logic from individual components so any
+ * component that uses Tooltip.svelte can reuse the same show/hide pattern.
+ */
+export interface ShowCustomTooltipOptions {
+  /** The element that triggers the tooltip (used for getBoundingClientRect). */
+  triggerEl: HTMLElement;
+  /** Callback that updates the component's tooltip position state. */
+  setPos: (pos: { x: number; y: number }) => void;
+  /** Callback that updates the component's tooltip visibility state. */
+  setVisible: (visible: boolean) => void;
+  /**
+   * When provided, the tooltip appears only after this many milliseconds of
+   * continuous hover. Useful for avoiding tooltip flicker on quick mouse-overs.
+   * The returned timer handle must be passed to `hideCustomTooltip` so it can
+   * be cancelled if the user leaves before the delay elapses.
+   */
+  waitBeforeRenderDelay?: number;
+  /**
+   * CSS selector passed to `Element.closest()` to find the nearest ancestor
+   * that creates a CSS fixed containing block (e.g. via backdrop-filter).
+   * When provided, tooltip coordinates are computed relative to that ancestor
+   * rather than the viewport, so `position: fixed` renders in the right place.
+   */
+  containingBlockSelector?: string;
+  /**
+   * Optional override for the default positioning logic.
+   * Receives the trigger element's viewport rect and the containing block's
+   * `{ top, left }` origin, and must return sidebar-relative `{ x, y }` values
+   * suitable for the Tooltip's `x` and `y` props.
+   * When omitted, the tooltip is placed just below the trigger element's bottom
+   * edge, aligned to its left edge, both adjusted for the containing block origin.
+   */
+  computePos?: (
+    triggerRect: DOMRect,
+    containingOrigin: { top: number; left: number }
+  ) => { x: number; y: number };
+}

@@ -31,14 +31,25 @@ interface Props {
   children?: Snippet;
 }
 
-let { visible = false, x = 0, y = 0, maxWidth, height, class: extraClass = '', children }: Props = $props();
+let {
+  visible = false,
+  x = 0,
+  y = 0,
+  maxWidth,
+  height,
+  class: tooltipClasses = '',
+  children
+}: Props = $props();
 </script>
 
 {#if visible}
   <div
     role="tooltip"
-    class="fixed z-[9999] rounded-xl border border-gray-200/60 bg-white/95 p-3 text-xs shadow-2xl backdrop-blur-md dark:border-gray-700/60 dark:bg-gray-900/95 dark:text-gray-100 {extraClass}"
-    style="left: {x}px; top: {y}px;{maxWidth != null ? ` max-width: ${maxWidth}px;` : ''}{height != null ? ` height: ${height}px;` : ''}"
+    class="fixed z-[9999] rounded-xl border border-gray-200/60 bg-white/95 p-3 text-xs shadow-2xl backdrop-blur-md dark:border-gray-700/60 dark:bg-gray-900/95 dark:text-gray-100 {tooltipClasses}"
+    style="left: {x}px; top: {y}px;{maxWidth != null ? ` max-width: ${maxWidth}px;` : ''}{height !=
+    null
+      ? ` height: ${height}px;`
+      : ''}"
     transition:fade={{ duration: 200 }}
   >
     {@render children?.()}
