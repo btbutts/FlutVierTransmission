@@ -319,7 +319,6 @@ function toggleSort(key: string) {
     sortDir = 'asc';
   }
 }
-
 </script>
 
 <div class="flex min-h-0 flex-1 flex-col space-y-4" style="min-width: {minTableWidth}">
@@ -359,7 +358,13 @@ function toggleSort(key: string) {
             class="mx-auto w-28 flex-shrink-0"
             dropdownHeight="p-[4px]"
             dropdownBtnTxtSize="text-md"
-          />
+            tooltipClass="whitespace-nowrap"
+            tooltipDelay={1500}
+          >
+            {#snippet tooltipConfig()}
+              Toggle table column(s) visibility
+            {/snippet}
+          </DDSelector>
           <input
             bind:value={filterName}
             placeholder="Filter torrents by name..."

@@ -139,7 +139,28 @@ async function savePriorities() {
                       onChange={(newValue) => {
                         filePriorities = { ...filePriorities, [i]: newValue };
                       }}
-                    />
+                      tooltipMaxWidth={235}
+                      tooltipDelay={1500}
+                    >
+                      {#snippet tooltipConfig()}
+                        <div class="leading-relaxed text-gray-700 dark:text-gray-200">
+                          <p class="mb-1.5 font-bold">Customize Torrent File Downloads:</p>
+                          <ul class="list-outside list-disc space-y-1 pl-4">
+                            <li>
+                              Disable downloading a torrent file by choosing <strong>Skip</strong>
+                            </li>
+                            <li>
+                              Reprioritize torrents by choosing <strong>Low</strong> or
+                              <strong>High</strong>
+                              <br /><span
+                                class="text-[0.65rem] font-light text-gray-500 italic dark:text-gray-400"
+                                >Default priority is always Normal</span
+                              >
+                            </li>
+                          </ul>
+                        </div>
+                      {/snippet}
+                    </DDSelector>
                   </td>
                 </tr>
               {/if}

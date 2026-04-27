@@ -1,10 +1,12 @@
 <!-- src/lib/components/DDSelector.svelte -->
 <script lang="ts" generics="T = string | number">
-import { tick } from 'svelte';
+import { tick, type Snippet } from 'svelte';
 
+import { hideCustomTooltip, showCustomTooltip } from '$lib/helpers';
 import { DDSelectorStatusIcons, type DropdownStatusIconName } from '$lib/plugins';
 
 import { createDropdown, type DropdownOption } from './dropdown.svelte.ts';
+import Tooltip from './Tooltip.svelte';
 
 interface Props {
   /** Current value (two-way bindable) */
@@ -29,6 +31,16 @@ interface Props {
   dropdownHeight?: string;
   /** Optional Set the dropdown text size (does not affect dropdown options list) */
   dropdownBtnTxtSize?: string;
+  /** Optional snippet rendered as tooltip content on hover (only while dropdown is closed) */
+  tooltipConfig?: Snippet;
+  /** Optional max-width (px) for the tooltip — passed to Tooltip.svelte's maxWidth prop */
+  tooltipMaxWidth?: number;
+  /** Optional extra Tailwind classes for the tooltip outer div (e.g. `whitespace-nowrap`) */
+  tooltipClass?: string;
+  /** Optional hover delay (ms) before the tooltip appears. When provided and > 0 the tooltip
+   *  is shown only after the cursor has rested on the button for this many milliseconds.
+   *  Omitting or passing 0 shows the tooltip immediately on hover. */
+  tooltipDelay?: number;
 }
 
 let {
@@ -47,12 +59,21 @@ let {
   setMDIstatusIcon, // MDI icon name for status indicator (e.g., 'CircleSmall')
   iconClass: iconClasses = '', // Optional additional classes for the MDI status icon
   dropdownHeight: DDHeightOverride = 'p-1.5', // Optional dropdown height
-  dropdownBtnTxtSize: DDTextSizeOverride = 'text-xs' // Optional dropdown text size
+  dropdownBtnTxtSize: DDTextSizeOverride = 'text-xs', // Optional dropdown text size
+  tooltipConfig,
+  tooltipMaxWidth,
+  tooltipClass: tooltipClassOverride = '',
+  tooltipDelay
 }: Props = $props();
 
 let rootRef = $state<HTMLDivElement | null>(null);
 let listRef = $state<HTMLDivElement | null>(null);
 let menuStyle = $state('');
+
+// Tooltip state (only used when tooltipConfig is provided)
+let tooltipVisible = $state(false);
+let tooltipPos = $state({ x: 0, y: 0 });
+let tooltipTimer: ReturnType<typeof setTimeout> | null = null;
 
 const StatusIconComp = $derived.by(() =>
   setMDIstatusIcon ? (DDSelectorStatusIcons[setMDIstatusIcon] ?? null) : null
@@ -150,6 +171,16 @@ $effect(() => {
     window.removeEventListener('scroll', syncPosition, true);
   };
 });
+
+// Hide the tooltip as soon as the dropdown opens so they never overlap
+$effect(() => {
+  if (dropdown.open && tooltipConfig) {
+    hideCustomTooltip((v) => {
+      tooltipVisible = v;
+    }, tooltipTimer);
+    tooltipTimer = null;
+  }
+});
 </script>
 
 <div class="relative w-25 {classOverride}" bind:this={rootRef}>
@@ -157,6 +188,28 @@ $effect(() => {
     bind:this={dropdown.buttonRef}
     onclick={dropdown.toggle}
     onkeydown={dropdown.handleKeydown}
+    onmouseenter={tooltipConfig
+      ? (e) => {
+          tooltipTimer = showCustomTooltip({
+            triggerEl: e.currentTarget as HTMLElement,
+            setPos: (pos) => {
+              tooltipPos = pos;
+            },
+            setVisible: (v) => {
+              tooltipVisible = v;
+            },
+            waitBeforeRenderDelay: tooltipDelay
+          });
+        }
+      : undefined}
+    onmouseleave={tooltipConfig
+      ? () => {
+          hideCustomTooltip((v) => {
+            tooltipVisible = v;
+          }, tooltipTimer);
+          tooltipTimer = null;
+        }
+      : undefined}
     aria-haspopup="listbox"
     aria-expanded={dropdown.open}
     class="w-full {DDHeightOverride} bg-ColorPalette-bg-tertiary/90 flex items-center justify-between rounded-md
@@ -179,7 +232,7 @@ $effect(() => {
   {#if dropdown.open}
     <div
       use:menuPopUp
-      class="fixed z-[80] max-h-60 overflow-hidden overflow-y-auto rounded-md border
+      class="fixed z-[10000] max-h-60 overflow-hidden overflow-y-auto rounded-md border
           border-gray-300/70 bg-white/95 py-1 text-xs shadow-2xl backdrop-blur-sm dark:border-gray-700/60 dark:bg-gray-800/90"
       style={menuStyle}
       role="listbox"
@@ -221,6 +274,29 @@ $effect(() => {
           <span>{option.label}</span>
         </button>
       {/each}
+    </div>
+  {/if}
+
+  {#if tooltipConfig}
+    <!--
+      Portal the Tooltip to <body> so it escapes:
+        • any backdrop-filter ancestor (which would make position:fixed relative to it, not the viewport)
+        • any overflow:hidden ancestor (e.g. the animated modal panel) that would clip it
+      The wrapper uses position:fixed + z-index:10001 to form a stacking context above the
+      modal overlay (z-9999), while pointer-events:none lets mouse events fall through.
+      Because no filter/transform is on the wrapper, position:fixed on Tooltip remains
+      viewport-relative, matching the viewport-relative coords from showCustomTooltip.
+    -->
+    <div use:menuPopUp style="position: fixed; inset: 0; pointer-events: none; z-index: 10001;">
+      <Tooltip
+        visible={tooltipVisible}
+        x={tooltipPos.x}
+        y={tooltipPos.y}
+        maxWidth={tooltipMaxWidth}
+        class={tooltipClassOverride}
+      >
+        {@render tooltipConfig()}
+      </Tooltip>
     </div>
   {/if}
 </div>

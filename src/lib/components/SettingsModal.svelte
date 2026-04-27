@@ -349,7 +349,13 @@ $effect(() => {
                   options={themeOptions}
                   onChange={(v) => (themePreference = v as 'system' | 'light' | 'dark')}
                   class="mx-0 w-40"
-                />
+                  tooltipClass="whitespace-nowrap"
+                  tooltipDelay={1500}
+                >
+                  {#snippet tooltipConfig()}
+                    Choose a new UI theme
+                  {/snippet}
+                </DDSelector>
               </div>
               <div>
                 <div class="text-ColorPalette-text-secondary mb-1 block text-sm font-medium">
@@ -364,7 +370,29 @@ $effect(() => {
                   ]}
                   onChange={(v) => (tempSettings = { ...tempSettings, encryption: v })}
                   class="mx-0 w-48"
-                />
+                  tooltipMaxWidth={360}
+                  tooltipDelay={1500}
+                >
+                  {#snippet tooltipConfig()}
+                    <div class="leading-relaxed text-gray-700 dark:text-gray-200">
+                      <p class="mb-1.5 font-bold">Set Transmission Peers Encryption Threshold:</p>
+                      <ul class="list-outside list-disc space-y-2 pl-4">
+                        <li>
+                          The most secure setting is <strong>Require Encrypted</strong>, but this
+                          can reduce what peers you can communicate with
+                        </li>
+                        <li>
+                          The minimum recommended setting is <strong>Prefer Encrypted</strong>,
+                          which will always try to use encrypted peers wherever possible
+                        </li>
+                        <li>
+                          Choosing <strong>Allow any</strong> is less secure but may allow you to connect
+                          with more peers
+                        </li>
+                      </ul>
+                    </div>
+                  {/snippet}
+                </DDSelector>
               </div>
             </div>
 
