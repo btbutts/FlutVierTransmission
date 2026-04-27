@@ -137,7 +137,7 @@ $effect(() => {
 
   <!-- Sidebar: fixed to viewport left, below toolbar. Table scrolls horizontally beneath it. -->
   <aside
-    class="border-ColorPalette-border-secondary/50 bg-ColorPalette-bg-secondary/80 text-ColorPalette-text-primary/80 fixed top-16 left-0 z-20 hidden h-[calc(100vh-4rem)] w-64 flex-col border-r p-6 backdrop-blur lg:flex"
+    class="border-ColorPalette-border-secondary/50 bg-ColorPalette-bg-secondary/80 text-ColorPalette-text-primary/80 fixed top-16 left-0 z-20 hidden h-[calc(100vh-4rem)] w-64 flex-col border-r px-6 pt-6 pb-3 backdrop-blur lg:flex"
   >
     <h2 class="mb-6 text-lg font-bold">Stats</h2>
     <div class="space-y-4 text-sm">

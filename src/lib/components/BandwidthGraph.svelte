@@ -8,6 +8,7 @@ import { ArrowDownBox, ArrowUpBox, Close } from '$lib/plugins';
 
 import FlyStretchAnimationWrapper from './FlyStretchAnimWrapper.svelte';
 import LoadingArcSpinner from './LoadingArcSpinner.svelte';
+import Tooltip from './Tooltip.svelte';
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 const GRAPH_H = 78;
@@ -49,6 +50,9 @@ let rafId = 0;
 
 let showHint = $state(false);
 let hintTimer: ReturnType<typeof setTimeout> | null = null;
+// Viewport coordinates for the sidebar hint tooltip — computed when the hint timer fires
+// so the tooltip is positioned relative to wherever the graph sits at that moment.
+let tooltipPos = $state({ x: 0, y: 0 });
 
 let modalOpen = $state(false);
 
@@ -343,6 +347,34 @@ function onEnter() {
   hovering = true;
   if (hintTimer) clearTimeout(hintTimer);
   hintTimer = setTimeout(() => {
+    if (containerEl) {
+      // The sidebar <aside> has backdrop-filter, which creates a new CSS containing block
+      // for position:fixed children. This means the Tooltip's `top/left` are relative to
+      // the sidebar's own origin, not the viewport. We subtract the sidebar's viewport rect
+      // so our viewport-relative calculations produce correct sidebar-relative CSS values.
+      const sidebarEl = containerEl.closest('aside') as HTMLElement | null;
+      const sidebarRect = sidebarEl?.getBoundingClientRect() ?? { top: 0, left: 0 };
+
+      const cR = containerEl.getBoundingClientRect();
+      // Vertical range: from the top of the counters readout (skipping the badge slot
+      // which is h-5 = 20 px + mb-1 = 4 px = 24 px) to the very bottom of the SVG.
+      const badgeSlotH = 24;
+      const rangeTopVp = cR.top + badgeSlotH; // viewport-relative top of readout counters
+      const rangeBottomVp = cR.bottom;         // viewport-relative bottom of SVG
+
+      // 100 px is a generous estimate used only for the clamp; the actual tooltip is ~83 px.
+      const tooltipH = 100;
+      const idealYVp = (rangeTopVp + rangeBottomVp) / 2 - tooltipH / 2;
+      const clampedYVp = Math.max(
+        sidebarRect.top + 8,
+        Math.min(idealYVp, window.innerHeight - tooltipH - 8)
+      );
+
+      tooltipPos = {
+        x: cR.right + 8 - sidebarRect.left, // sidebar-relative (left=0 so no change)
+        y: clampedYVp - sidebarRect.top      // sidebar-relative y
+      };
+    }
     showHint = true;
   }, HINT_DELAY);
 }
@@ -457,6 +489,19 @@ onMount(() => {
     onmouseleave={onLeave}
     onmousemove={onSidebarMove}
   >
+    <!-- Alt speed badge — fixed-height slot, first in the component so it appears
+         above the upload/download counters. Reserving space here keeps all elements
+         below it (counters + SVG) at a stable position whether alt-speed is on or off. -->
+    <div class="mb-1 flex h-5 items-center justify-center px-6">
+      {#if altSpeedOn}
+        <span
+          class="rounded bg-blue-100 px-1.5 py-0.5 text-xs text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"
+        >
+          Alt Speed Active
+        </span>
+      {/if}
+    </div>
+
     <!-- Speed readout block — padded to sit within the sidebar's content margin.
        Row 1: download counter (left) + upload counter (right).
        Row 2: centered timestamp/zoom label in a fixed-height slot so layout never shifts. -->
@@ -492,7 +537,10 @@ onMount(() => {
       </div>
     </div>
 
-    <!-- SVG graph — no horizontal padding; fills full sidebar width -->
+    <!-- SVG graph — no horizontal padding; fills full sidebar width.
+         Sits at the very bottom of the component so GRAPH_MB (4 px zero-margin) aligns
+         with the sidebar's pb-3 (12 px) to place the graph zero-line 16 px from the
+         viewport bottom — matching the PrimaryTable's py-4 bottom padding. -->
     <div bind:clientWidth={svgCtnrW} class="w-full">
       {#if svgCtnrW > 0}
         {@const anim = panEndTimestamp !== null ? 0 : animOff}
@@ -575,26 +623,6 @@ onMount(() => {
       {/if}
     </div>
 
-    <!-- Alt speed badge — only rendered when Transmission's alt-speed-enabled is active -->
-    {#if altSpeedOn}
-      <div class="mt-1 flex justify-center px-6">
-        <span
-          class="rounded bg-blue-100 px-1.5 py-0.5 text-xs text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"
-        >
-          Alt Speed Active
-        </span>
-      </div>
-    {/if}
-
-    <!-- Hover hint — fades in after HINT_DELAY ms of continuous hovering -->
-    <div
-      class="mt-0.5 px-6 text-center text-xs leading-relaxed transition-opacity duration-300"
-      style="opacity: {showHint ? 0.5 : 0}; color: rgb(156 163 175);"
-      aria-hidden="true"
-    >
-      Hold Control + scroll to zoom<br />Scroll left / right to pan history<br />Double-click to
-      expand
-    </div>
   </div>
 
   <!-- Accessible expand trigger for keyboard navigation -->
@@ -680,6 +708,22 @@ onMount(() => {
           <span class="text-ColorPalette-text-quarternary">{fmtWin(timeWin)} window</span>
         {/if}
       </div>
+
+      <!-- Alt speed badge: absolutely centered between the time counter (at 50%) and
+           the close button (at the right edge). pointer-events-none on the wrapper so
+           it never blocks clicks on the close button or header area. -->
+      {#if altSpeedOn}
+        <div
+          class="pointer-events-none absolute inset-y-0 flex items-center justify-center"
+          style="left: 50%; right: 0;"
+        >
+          <span
+            class="rounded bg-blue-100 px-2 py-0.5 text-xs text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"
+          >
+            Alt Speed Active
+          </span>
+        </div>
+      {/if}
 
       <!-- Right: close button -->
       <button
@@ -816,17 +860,18 @@ onMount(() => {
           >
         </div>
 
-        <!-- Alt speed badge (only when enabled) -->
-        {#if altSpeedOn}
-          <div class="flex justify-center pb-3">
-            <span
-              class="rounded bg-blue-100 px-2 py-0.5 text-xs text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"
-            >
-              Alt Speed Active
-            </span>
-          </div>
-        {/if}
       </div>
     {/if}
   {/snippet}
 </FlyStretchAnimationWrapper>
+
+<!-- Sidebar interaction hint tooltip — appears to the right of the sidebar after the user
+     has hovered over the graph for HINT_DELAY ms. Not rendered while the pop-up modal is open
+     since the modal provides its own static hint text in its footer. -->
+<Tooltip visible={showHint && !modalOpen} x={tooltipPos.x} y={tooltipPos.y} maxWidth={260} class="whitespace-nowrap">
+  <span class="leading-relaxed text-gray-700 dark:text-gray-200">
+    Hold Control + scroll to zoom<br />
+    Scroll left / right to pan history<br />
+    Double-click to expand
+  </span>
+</Tooltip>
