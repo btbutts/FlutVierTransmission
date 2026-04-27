@@ -1,5 +1,6 @@
 // place files you want to import through the `$lib` alias in this folder.
 // src/lib/index.ts
+export { loadAppState, writeAppStateBandwidth } from './appstate';
 export { callRpc } from './rpc';
 export {
   refreshAll,

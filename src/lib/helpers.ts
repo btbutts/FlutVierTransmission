@@ -2,6 +2,7 @@
 // It can be imported by any other module in the project without creating circular dependencies.
 // src/lib/helpers.ts
 
+import { writeAppStateGeoEntry } from './appstate';
 import type { GeoInfo, Torrent } from './types';
 
 // Example helper function to create a pop-up element that is appended to the document body
@@ -70,8 +71,35 @@ export function setCachedGeoLookup(ip: string, info: GeoInfo) {
     const cache: Record<string, GeoInfo> = raw ? JSON.parse(raw) : {};
     cache[ip] = { ...info, cachedAt: Date.now() };
     localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
+    // Also persist to the server-side JSON so the entry survives a browser refresh.
+    writeAppStateGeoEntry(ip, cache[ip]);
   } catch {
     // localStorage may be unavailable
+  }
+}
+
+// Uses ip-api.com for free IP geolocation — no API key required,
+// but rate-limited to 45 req/min per IP. Caching is essential
+// to avoid hitting limits and ensure responsive tooltips.
+export async function ipGeoLookup(ip: string): Promise<GeoInfo | null> {
+  const cached = getCachedGeoLookup(ip);
+  if (cached) return cached;
+  try {
+    const res = await fetch(`http://ip-api.com/json/${ip}`);
+    if (!res.ok) return null;
+    const json = await res.json();
+    if (json.status !== 'success') return null;
+    const info: GeoInfo = {
+      countryCode: json.countryCode ?? '',
+      country: json.country ?? '',
+      city: json.city ?? '',
+      regionName: json.regionName ?? '',
+      cachedAt: Date.now()
+    };
+    setCachedGeoLookup(ip, info);
+    return info;
+  } catch {
+    return null;
   }
 }
 
@@ -132,29 +160,4 @@ export function formatEta(seconds: number): string {
   const yLabel = y === 1 ? 'yr' : 'yrs';
   const moLabel = mo === 1 ? 'mo' : 'mos';
   return mo === 0 ? `${y} ${yLabel}` : `${y} ${yLabel} ${mo} ${moLabel}`;
-}
-
-// Uses ip-api.com for free IP geolocation — no API key required,
-// but rate-limited to 45 req/min per IP. Caching is essential
-// to avoid hitting limits and ensure responsive tooltips.
-export async function ipGeoLookup(ip: string): Promise<GeoInfo | null> {
-  const cached = getCachedGeoLookup(ip);
-  if (cached) return cached;
-  try {
-    const res = await fetch(`http://ip-api.com/json/${ip}`);
-    if (!res.ok) return null;
-    const json = await res.json();
-    if (json.status !== 'success') return null;
-    const info: GeoInfo = {
-      countryCode: json.countryCode ?? '',
-      country: json.country ?? '',
-      city: json.city ?? '',
-      regionName: json.regionName ?? '',
-      cachedAt: Date.now()
-    };
-    setCachedGeoLookup(ip, info);
-    return info;
-  } catch {
-    return null;
-  }
 }

@@ -5,7 +5,7 @@ import { browser } from '$app/environment';
 import { callRpc, refreshSession, session, torrents, updateBlocklist, updateSession } from '$lib';
 
 import { getCompletedTorrentPaths, windowPopUp } from '$lib/helpers';
-import { Close, LanCheck, LanDisconnect, Wan } from '$lib/plugins';
+import { Close, InformationVariantCircleOutline, LanCheck, LanDisconnect, Wan } from '$lib/plugins';
 
 import DDSelector from './DDSelector.svelte';
 import SaveButton from './SaveButton.svelte';
@@ -28,7 +28,7 @@ const themeOptions = [
 ];
 
 // ── Settings modal state ──────────────────────────────────────────────────────
-type SettingsTab = 'general' | 'speeds' | 'queue' | 'ports' | 'remote' | 'disk';
+type SettingsTab = 'general' | 'speeds' | 'queue' | 'ports' | 'remote' | 'disk' | 'ui';
 let tempSettings = $state<Record<string, unknown>>({});
 let activeTab = $state<SettingsTab>('general');
 let saveStatus = $state<'idle' | 'saving' | 'success' | 'error'>('idle');
@@ -38,8 +38,14 @@ const settingsTabs: Array<{ id: SettingsTab; label: string }> = [
   { id: 'queue', label: 'Queue' },
   { id: 'ports', label: 'Ports' },
   { id: 'remote', label: 'Remote' },
-  { id: 'disk', label: 'Disk' }
+  { id: 'disk', label: 'Disk' },
+  { id: 'ui', label: 'UI' }
 ];
+
+// ── UI Preferences (client-side only, stored in localStorage) ─────────────────
+// Must match BW_SERVER_PREF_KEY in appstate.ts.
+const bwServerPrefKey = 'flutvierStoreBandwidthOnServer';
+let storeBandwidthOnServer = $state(true);
 
 // ── Common paths (localStorage) ───────────────────────────────────────────────
 const commonPathsKey = 'flutvierCommonPaths';
@@ -243,6 +249,11 @@ onMount(() => {
     } catch {
       /* ignore malformed data */
     }
+  }
+
+  const storedBwServer = window.localStorage.getItem(bwServerPrefKey);
+  if (storedBwServer !== null) {
+    storeBandwidthOnServer = storedBwServer !== 'false';
   }
 });
 
@@ -497,33 +508,75 @@ $effect(() => {
                 Speed Limits
               </div>
               <div class="grid grid-cols-2 gap-4">
-                <div>
-                  <label
-                    for="speed-limit-down"
-                    class="text-ColorPalette-text-secondary mb-1 block text-sm font-medium"
-                    >Download (KiB/s)</label
-                  >
-                  <input
-                    id="speed-limit-down"
-                    type="number"
-                    bind:value={tempSettings['speed-limit-down']}
-                    min="0"
-                    class="border-ColorPalette-border-primary focus:border-ColorPalette-input-ring-focus-primary focus:ring-ColorPalette-input-ring-focus-primary bg-ColorPalette-bg-tertiary text-ColorPalette-text-tertiary focus:text-ColorPalette-text-primary w-full rounded-md border p-1.5 text-xs focus:ring-2 focus:outline-none"
-                  />
+                <!-- Download column -->
+                <div class="space-y-2">
+                  <label class="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(tempSettings['speed-limit-down-enabled'])}
+                      onchange={(e) => {
+                        tempSettings = {
+                          ...tempSettings,
+                          'speed-limit-down-enabled': (e.currentTarget as HTMLInputElement).checked
+                        };
+                      }}
+                      class="text-ColorPalette-modal-TxtAccent-secondary h-4 w-4 rounded border-gray-300 focus:ring-blue-500 focus:outline-none"
+                    />
+                    <span class="text-ColorPalette-text-secondary text-sm font-medium"
+                      >Enable download speed limit</span
+                    >
+                  </label>
+                  {#if tempSettings['speed-limit-down-enabled']}
+                    <div>
+                      <label
+                        for="speed-limit-down"
+                        class="text-ColorPalette-text-secondary mb-1 block text-sm font-medium"
+                        >Download (KiB/s)</label
+                      >
+                      <input
+                        id="speed-limit-down"
+                        type="number"
+                        bind:value={tempSettings['speed-limit-down']}
+                        min="0"
+                        class="border-ColorPalette-border-primary focus:border-ColorPalette-input-ring-focus-primary focus:ring-ColorPalette-input-ring-focus-primary bg-ColorPalette-bg-tertiary text-ColorPalette-text-tertiary focus:text-ColorPalette-text-primary w-full rounded-md border p-1.5 text-xs focus:ring-2 focus:outline-none"
+                      />
+                    </div>
+                  {/if}
                 </div>
-                <div>
-                  <label
-                    for="speed-limit-up"
-                    class="text-ColorPalette-text-secondary mb-1 block text-sm font-medium"
-                    >Upload (KiB/s)</label
-                  >
-                  <input
-                    id="speed-limit-up"
-                    type="number"
-                    bind:value={tempSettings['speed-limit-up']}
-                    min="0"
-                    class="border-ColorPalette-border-primary focus:border-ColorPalette-input-ring-focus-primary focus:ring-ColorPalette-input-ring-focus-primary bg-ColorPalette-bg-tertiary text-ColorPalette-text-tertiary focus:text-ColorPalette-text-primary w-full rounded-md border p-1.5 text-xs focus:ring-2 focus:outline-none"
-                  />
+                <!-- Upload column -->
+                <div class="space-y-2">
+                  <label class="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(tempSettings['speed-limit-up-enabled'])}
+                      onchange={(e) => {
+                        tempSettings = {
+                          ...tempSettings,
+                          'speed-limit-up-enabled': (e.currentTarget as HTMLInputElement).checked
+                        };
+                      }}
+                      class="text-ColorPalette-modal-TxtAccent-secondary h-4 w-4 rounded border-gray-300 focus:ring-blue-500 focus:outline-none"
+                    />
+                    <span class="text-ColorPalette-text-secondary text-sm font-medium"
+                      >Enable upload speed limit</span
+                    >
+                  </label>
+                  {#if tempSettings['speed-limit-up-enabled']}
+                    <div>
+                      <label
+                        for="speed-limit-up"
+                        class="text-ColorPalette-text-secondary mb-1 block text-sm font-medium"
+                        >Upload (KiB/s)</label
+                      >
+                      <input
+                        id="speed-limit-up"
+                        type="number"
+                        bind:value={tempSettings['speed-limit-up']}
+                        min="0"
+                        class="border-ColorPalette-border-primary focus:border-ColorPalette-input-ring-focus-primary focus:ring-ColorPalette-input-ring-focus-primary bg-ColorPalette-bg-tertiary text-ColorPalette-text-tertiary focus:text-ColorPalette-text-primary w-full rounded-md border p-1.5 text-xs focus:ring-2 focus:outline-none"
+                      />
+                    </div>
+                  {/if}
                 </div>
               </div>
             </div>
@@ -1093,6 +1146,63 @@ $effect(() => {
                 class="border-ColorPalette-border-primary focus:border-ColorPalette-input-ring-focus-primary focus:ring-ColorPalette-input-ring-focus-primary bg-ColorPalette-bg-tertiary text-ColorPalette-text-tertiary focus:text-ColorPalette-text-primary w-24 rounded-md border p-1.5 text-xs focus:ring-2 focus:outline-none"
               />
             </label>
+          </div>
+
+          <!-- ══ UI TAB ══════════════════════════════════════════════════════ -->
+        {:else if activeTab === 'ui'}
+          <div class="text-ColorPalette-text-secondary space-y-6">
+            <!-- Bandwidth Graph -->
+            <div>
+              <div class="text-ColorPalette-text-secondary mb-3 text-sm font-semibold">
+                Bandwidth Graph
+              </div>
+              <div class="flex items-center gap-3">
+                <label class="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={storeBandwidthOnServer}
+                    onchange={(e) => {
+                      storeBandwidthOnServer = (e.currentTarget as HTMLInputElement).checked;
+                      if (browser) {
+                        window.localStorage.setItem(
+                          bwServerPrefKey,
+                          String(storeBandwidthOnServer)
+                        );
+                      }
+                    }}
+                    class="text-ColorPalette-modal-TxtAccent-secondary h-4 w-4 rounded border-gray-300 focus:ring-blue-500 focus:outline-none"
+                  />
+                  <span class="text-ColorPalette-text-secondary text-sm font-medium"
+                    >Store bandwidth utilization snapshot on server</span
+                  >
+                </label>
+                <!-- Info icon with tooltip -->
+                <div class="group relative">
+                  <InformationVariantCircleOutline class="h-4 w-4 cursor-help text-gray-400" />
+                  <div
+                    role="tooltip"
+                    class="invisible absolute top-full left-0 z-[60] mt-1 w-96 rounded-lg bg-gray-800/95 px-3 py-2.5 text-xs leading-relaxed text-gray-200 shadow-xl group-hover:visible"
+                  >
+                    <ul class="list-outside list-disc space-y-2 pl-4">
+                      <li>
+                        When enabled, the last five minutes of bandwidth utilization received from
+                        the Transmission RPC server is written to the server every 60 seconds, as
+                        well as immediately upon page refresh.
+                      </li>
+                      <li>
+                        The next time the page loads, if the bandwidth data stored on the server
+                        occurred within the last 12 hours, it will be loaded into the bandwidth
+                        graph.
+                      </li>
+                      <li>
+                        Disabling this setting will rely on local browser-caching only, which cannot
+                        survive a page reload, thus the graph will start anew.
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         {/if}
       </div>

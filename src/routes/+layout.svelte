@@ -12,6 +12,7 @@ import {
   type Torrent
 } from '$lib';
 
+import { loadAppState, writeAppStateBandwidth } from '$lib/appstate';
 import AddTorrentButton from '$lib/components/AddTorrentButton.svelte';
 import AddTorrentMasterModal from '$lib/components/AddTorrentMasterModal.svelte';
 import BandwidthGraph from '$lib/components/BandwidthGraph.svelte';
@@ -46,6 +47,10 @@ let { children } = $props();
 const scrollSync = createHorizontalScrollSync();
 
 $effect(() => {
+  // Load server-persisted bandwidth history and geo cache on startup.
+  // Runs before the first poll so the graph can show historical data immediately.
+  loadAppState();
+
   // Auto-refresh every 20s
   refreshAll();
   const interval = setInterval(refreshAll, 20000);
@@ -54,9 +59,22 @@ $effect(() => {
   pollBandwidth();
   const bwInterval = setInterval(pollBandwidth, 1000);
 
+  // Persist the last five minutes of bandwidth history to disk every 60s.
+  const bwWriteInterval = setInterval(writeAppStateBandwidth, 60000);
+
+  // Final write on page close / refresh. keepalive:true tells the browser to
+  // deliver the request even as the page is tearing down, eliminating the data
+  // gap that would otherwise exist between the last periodic write and now.
+  function handleBeforeUnload() {
+    writeAppStateBandwidth(true);
+  }
+  window.addEventListener('beforeunload', handleBeforeUnload);
+
   return () => {
     clearInterval(interval);
     clearInterval(bwInterval);
+    clearInterval(bwWriteInterval);
+    window.removeEventListener('beforeunload', handleBeforeUnload);
   };
 });
 </script>

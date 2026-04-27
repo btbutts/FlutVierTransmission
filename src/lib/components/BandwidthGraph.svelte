@@ -37,9 +37,13 @@ let mxRatio = $state<number | null>(null);
 let animOff = $state(0);
 // Smoothly-animated Y-scale ceiling (bytes/sec). Rises fast on spikes, decays slowly.
 let displayMaxV = $state(1);
+// Smoothly-animated Y-scale floor (bytes/sec). Falls fast when values drop (to never clip
+// low values), rises slowly when all visible data is consistently high (gradual zoom-in).
+let displayMinV = $state(0);
 
 // Non-reactive helpers for the rAF loop (avoid reactive overhead)
 let _latestMaxV = 1; // target for displayMaxV, written by $effect
+let _latestMinV = 0; // target for displayMinV, written by $effect
 let _lastTick = 0; // timestamp of previous rAF tick, for dt calculation
 let rafId = 0;
 
@@ -63,7 +67,7 @@ let noTransition = $state(false);
 const aggData = $derived.by(() => {
   const h = $bandwidthHistory;
   if (!h.length) {
-    return { dl: [] as number[], ul: [] as number[], ts: [] as (number | null)[], bsz: 1 };
+    return { dl: [] as number[], ul: [] as number[], ts: [] as (number | null)[], bsz: 1, minV: 0 };
   }
 
   // When panned, binary-search for the first index whose timestamp exceeds the anchor.
@@ -116,27 +120,43 @@ const aggData = $derived.by(() => {
     ts = [...Array<number | null>(padLen).fill(null), ...ts];
   }
 
-  return { dl, ul, ts, bsz };
+  // Minimum value across the visible slice — used to compute the adaptive Y baseline.
+  const minV = dl.length > 0 ? Math.min(...dl, ...ul) : 0;
+
+  return { dl, ul, ts, bsz, minV };
 });
 
 // Timestamp of the right edge of the currently-displayed window for the center label.
 // Simply mirrors panEndTimestamp — non-null only when panned.
 const panRightEdgeTs = $derived(panEndTimestamp);
 
-// Update _latestMaxV whenever aggregated data changes.
-// Adds 10% headroom so peaks never clip the SVG top.
+// Update _latestMaxV/_latestMinV whenever aggregated data changes.
+// 5% headroom keeps the peak near the top without wasting space.
+// Adaptive baseline: when all visible values are comfortably above zero (> 20% of peak),
+// displayMinV rises slowly toward minV×0.85, zooming the Y-range so small ups and
+// downs become visible. When any zeros are present the baseline snaps back to 0.
 $effect(() => {
   if (!aggData.dl.length) {
     _latestMaxV = 1;
+    _latestMinV = 0;
     return;
   }
   const raw = Math.max(1, ...aggData.dl, ...aggData.ul);
-  _latestMaxV = raw * 1.1;
+  _latestMaxV = raw * 1.05;
   // Snap immediately on the first real data so the scale doesn't slowly ramp up.
   if (displayMaxV <= 1 && raw > 1) displayMaxV = _latestMaxV;
+
+  const minRaw = aggData.minV;
+  _latestMinV = minRaw > 0 && minRaw > raw * 0.2 ? minRaw * 0.85 : 0;
+  // When zeros return to the visible window, snap the baseline to 0 immediately
+  // so the graph never clips real zero-valued data below the floor.
+  if (_latestMinV === 0 && displayMinV > 0) displayMinV = 0;
 });
 
-// ── Live displayed values (hover-interpolated or latest received) ──────────────
+// ── Live displayed values (nearest actual sample or latest received) ──────────
+// When hovering, the counters snap to the nearest ACTUAL sampled data point rather
+// than linearly interpolating between two neighbours — interpolated values would
+// be estimates, not real measurements.
 const live = $derived.by(() => {
   const { dl, ul, ts } = aggData;
   const h = $bandwidthHistory;
@@ -146,10 +166,12 @@ const live = $derived.by(() => {
     const lo = Math.max(0, Math.min(n - 1, Math.floor(fi)));
     const hi = Math.min(n, lo + 1);
     const fr = fi - lo;
+    // Snap to whichever sampled point the cursor is closest to.
+    const nearest = fr < 0.5 ? lo : hi;
     return {
-      dl: dl[lo] + (dl[hi] - dl[lo]) * fr,
-      ul: ul[lo] + (ul[hi] - ul[lo]) * fr,
-      ts: ts[lo],
+      dl: dl[nearest],
+      ul: ul[nearest],
+      ts: ts[nearest],
       isHover: true
     };
   }
@@ -166,11 +188,10 @@ const altSpeedOn = $derived(Boolean($session['alt-speed-enabled']));
 
 // ── Format helpers ─────────────────────────────────────────────────────────────
 function fmtBps(bytesPerSec: number): [string, string] {
-  const b = bytesPerSec * 8; // bytes/s → bits/s
-  if (b < 1e3) return [b.toFixed(0), 'b/s'];
-  if (b < 1e6) return [(b / 1e3).toFixed(1), 'Kb/s'];
-  if (b < 1e9) return [(b / 1e6).toFixed(1), 'Mb/s'];
-  return [(b / 1e9).toFixed(2), 'Gb/s'];
+  if (bytesPerSec < 1e3) return [bytesPerSec.toFixed(0), 'B/s'];
+  if (bytesPerSec < 1e6) return [(bytesPerSec / 1e3).toFixed(1), 'KB/s'];
+  if (bytesPerSec < 1e9) return [(bytesPerSec / 1e6).toFixed(1), 'MB/s'];
+  return [(bytesPerSec / 1e9).toFixed(2), 'GB/s'];
 }
 
 // "Time since" a timestamp — follows the same plurality style as formatEta in helpers.ts
@@ -218,8 +239,9 @@ function curvePath(pts: [number, number][]): string {
 }
 
 // ── SVG path builder ───────────────────────────────────────────────────────────
-// Uses displayMaxV (smoothly animated) for the Y scale so scale changes transition
-// smoothly rather than snapping. Extra top margin ensures peaks are never clipped.
+// Y-scale uses the animated [displayMinV, displayMaxV] range.
+// displayMinV provides an adaptive floor: when all visible data is well above zero
+// the floor rises slowly, zooming in so small ups and downs become visible.
 // anim: scroll animation offset (0–1); pass 0 when panned so history is static.
 function buildPaths(W: number, H: number, anim: number) {
   const { dl, ul } = aggData;
@@ -229,12 +251,16 @@ function buildPaths(W: number, H: number, anim: number) {
   const ppx = W / Math.max(1, n);
   const mt = GRAPH_MT,
     mb = GRAPH_MB,
-    ch = H - mt - mb; // generous top margin prevents clipping
+    ch = H - mt - mb;
   const base = H - mb;
   const xOff = anim * ppx;
 
-  // Clamp v to displayMaxV so values that briefly overshoot don't escape the clip area.
-  const yOf = (v: number) => mt + ch * (1 - Math.min(v, displayMaxV) / Math.max(displayMaxV, 1));
+  // Map value v into the [displayMinV, displayMaxV] range.
+  // Values below displayMinV render below base and are hidden by the clipPath.
+  const scaledMin = displayMinV;
+  const scaledMax = displayMaxV;
+  const range = Math.max(1, scaledMax - scaledMin);
+  const yOf = (v: number) => mt + ch * (1 - (Math.min(v, scaledMax) - scaledMin) / range);
 
   let dlP: [number, number][] = dl.map((v, i) => [i * ppx - xOff, yOf(v)]);
   let ulP: [number, number][] = ul.map((v, i) => [i * ppx - xOff, yOf(v)]);
@@ -275,7 +301,10 @@ function getCH(W: number, H: number, anim: number) {
   const mt = GRAPH_MT,
     mb = GRAPH_MB,
     ch = H - mt - mb;
-  const yOf = (v: number) => mt + ch * (1 - Math.min(v, displayMaxV) / Math.max(displayMaxV, 1));
+  const scaledMin = displayMinV;
+  const scaledMax = displayMaxV;
+  const range = Math.max(1, scaledMax - scaledMin);
+  const yOf = (v: number) => mt + ch * (1 - (Math.min(v, scaledMax) - scaledMin) / range);
 
   const x = mxRatio * W;
   const xOff = anim * ppx;
@@ -284,10 +313,12 @@ function getCH(W: number, H: number, anim: number) {
   const hi = Math.min(n, lo + 1);
   const fr = fi - lo;
 
+  // Snap crosshair dots to the nearest actual data point, matching the counters.
+  const nearest = fr < 0.5 ? lo : hi;
   return {
     x,
-    dlY: yOf(dl[lo] + (dl[hi] - dl[lo]) * fr),
-    ulY: yOf(ul[lo] + (ul[hi] - ul[lo]) * fr)
+    dlY: yOf(dl[nearest]),
+    ulY: yOf(ul[nearest])
   };
 }
 
@@ -448,9 +479,14 @@ onMount(() => {
     // Smooth scroll offset: 0 → 1 over the course of one poll interval (1 second).
     animOff = Math.min(1, (now - get(bandwidthLastPollTime)) / 1000);
 
-    // Y-scale: ramp up quickly on new spikes (speed = 4×/s), decay slowly (0.4×/s).
+    // Y ceiling: snaps up fast on spikes (6×/s ≈ 250 ms), falls back in ~500 ms (4.5×/s).
     const diff = _latestMaxV - displayMaxV;
-    displayMaxV += diff * Math.min(1, (diff > 0 ? 4.0 : 0.4) * dt);
+    displayMaxV += diff * Math.min(1, (diff > 0 ? 6.0 : 4.5) * dt);
+
+    // Y floor (adaptive baseline): snaps down immediately when values drop (6×/s),
+    // zooms in within ~500 ms when all visible values stay high (4.5×/s).
+    const minDiff = _latestMinV - displayMinV;
+    if (minDiff !== 0) displayMinV += minDiff * Math.min(1, (minDiff < 0 ? 6.0 : 4.5) * dt);
 
     rafId = requestAnimationFrame(tick);
   };
@@ -842,7 +878,10 @@ onMount(() => {
                     y={mH - 4}
                     text-anchor="end"
                     fill="rgba(156,163,175,0.4)"
-                    font-size="9">0</text
+                    font-size="9"
+                    >{displayMinV > 0
+                      ? `${fmtBps(displayMinV)[0]} ${fmtBps(displayMinV)[1]}`
+                      : '0'}</text
                   >
                 {:else}
                   <text

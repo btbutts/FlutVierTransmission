@@ -334,10 +334,14 @@ export const bandwidthLastPollTime = writable<number>(Date.now());
 
 export async function pollBandwidth(): Promise<void> {
   try {
-    const res = await callRpc<{ downloadSpeed: number; uploadSpeed: number }>('session-stats');
+    const res = await callRpc<{ torrents: Array<{ rateDownload: number; rateUpload: number }> }>(
+      'torrent-get',
+      { fields: ['rateDownload', 'rateUpload'] }
+    );
+    const ts = res.torrents ?? [];
     const point: BandwidthPoint = {
-      download: res.downloadSpeed ?? 0,
-      upload: res.uploadSpeed ?? 0,
+      download: ts.reduce((sum, t) => sum + (t.rateDownload ?? 0), 0),
+      upload: ts.reduce((sum, t) => sum + (t.rateUpload ?? 0), 0),
       timestamp: Date.now()
     };
     bandwidthHistory.update((h) => {

@@ -1,5 +1,8 @@
 node_modules
 
+# Server-side runtime data (bandwidth history, geo cache, future user settings)
+/data
+
 
 .output
 .vercel
