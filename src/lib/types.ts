@@ -108,6 +108,8 @@ export interface TorrentQuickStats {
 /**
  * Full torrent record as stored in the in-memory cache.
  * Extends the base Torrent type with an internal staleness-tracking timestamp.
+ * This is left separated from the raw Torrent type since timestamp is not part
+ * of the RPC spec and is only relevant to our internal cache management.
  */
 export interface TorrentInfoFull extends Torrent {
   timestamp: number;
