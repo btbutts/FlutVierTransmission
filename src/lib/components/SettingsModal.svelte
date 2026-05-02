@@ -2,7 +2,14 @@
 <script lang="ts">
 import { onMount } from 'svelte';
 import { browser } from '$app/environment';
-import { callRpc, refreshSession, session, torrents, updateBlocklist, updateSession } from '$lib';
+import {
+  refreshSession,
+  session,
+  torrents,
+  transmissionCallRPC,
+  updateBlocklist,
+  updateSession
+} from '$lib';
 
 import { getCompletedTorrentPaths, hideCustomTooltip, showCustomTooltip } from '$lib/helpers';
 import { Close, InformationVariantCircleOutline, LanCheck, LanDisconnect, Wan } from '$lib/plugins';
@@ -135,7 +142,7 @@ async function testPort() {
     if (tempSettings['peer-port'] !== $session['peer-port']) {
       await updateSession({ 'peer-port': tempSettings['peer-port'] });
     }
-    const result = await callRpc<{ 'port-is-open': boolean }>('port-test');
+    const result = await transmissionCallRPC<{ 'port-is-open': boolean }>('port-test');
     if (result['port-is-open']) {
       portTestState = 'open';
     } else {

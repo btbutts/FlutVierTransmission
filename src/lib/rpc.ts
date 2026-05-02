@@ -14,7 +14,7 @@ export interface RpcResponse<T = unknown> {
   tag?: number;
 }
 
-export async function callRpc<T = unknown>(
+export async function transmissionCallRPC<T = unknown>(
   method: string,
   args: Record<string, unknown> = {}
 ): Promise<T> {

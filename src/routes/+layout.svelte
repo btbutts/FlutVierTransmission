@@ -5,9 +5,10 @@ import {
   error,
   isLoading,
   performActionAndRefresh,
-  pollBandwidth,
   refreshAll,
   selectedTorrents,
+  startPolling,
+  stopPolling,
   torrents,
   type Torrent
 } from '$lib';
@@ -53,13 +54,10 @@ $effect(() => {
   // Runs before the first poll so the graph can show historical data immediately.
   loadAppState();
 
-  // Auto-refresh every 20s
-  refreshAll();
-  const interval = setInterval(refreshAll, 20000);
-
-  // Bandwidth polling every 1s (starts immediately then repeats)
-  pollBandwidth();
-  const bwInterval = setInterval(pollBandwidth, 1000);
+  // Consolidated poller: handles 1-second bandwidth/status updates and the
+  // 20-second full torrent+session refresh in a single setInterval.
+  // The first tick fires a full poll immediately so the UI is populated at startup.
+  startPolling();
 
   // Persist the last five minutes of bandwidth history to disk every 60s.
   const bwWriteInterval = setInterval(writeAppStateBandwidth, 60000);
@@ -73,8 +71,7 @@ $effect(() => {
   window.addEventListener('beforeunload', handleBeforeUnload);
 
   return () => {
-    clearInterval(interval);
-    clearInterval(bwInterval);
+    stopPolling();
     clearInterval(bwWriteInterval);
     window.removeEventListener('beforeunload', handleBeforeUnload);
   };

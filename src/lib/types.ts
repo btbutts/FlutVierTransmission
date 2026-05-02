@@ -92,6 +92,37 @@ export interface Torrent {
   downloadedEver: number; // bytes
 }
 
+// ─── Polling / Cache Interfaces ───────────────────────────────────────────────
+
+/**
+ * Fields fetched on every 1-second light poll.
+ * Kept minimal so the per-tick RPC payload stays small.
+ */
+export interface TorrentQuickStats {
+  id: number;
+  rateDownload: number;
+  rateUpload: number;
+  status: number;
+}
+
+/**
+ * Full torrent record as stored in the in-memory cache.
+ * Extends the base Torrent type with an internal staleness-tracking timestamp.
+ */
+export interface TorrentInfoFull extends Torrent {
+  timestamp: number;
+}
+
+/**
+ * Shape of a session-get (or partial session) payload stored in the cache.
+ * The timestamp field is injected by TransmissionDB on each write.
+ */
+export interface TorrentSessionUpdate extends Record<string, unknown> {
+  timestamp?: number;
+}
+
+// ─── Geo / Peer Entry ─────────────────────────────────────────────────────────
+
 export interface GeoInfo {
   countryCode: string;
   country: string;

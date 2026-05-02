@@ -3,8 +3,9 @@
 
 import { writable } from 'svelte/store';
 
-import { callRpc, ensureSessionId } from './rpc';
-import type { Torrent, TrackerStat } from './types';
+import { FULL_INFO_FIELDS, transmissionDataStore } from './PollAgent/db';
+import { ensureSessionId, transmissionCallRPC } from './rpc';
+import type { Torrent, TorrentSessionUpdate, TrackerStat } from './types';
 
 // Shared layout min-width: set by page.svelte (sidebar + table), read by layout.svelte
 export const layoutMinWidth = writable('100%');
@@ -18,17 +19,8 @@ export const session = writable<Record<string, unknown>>({});
 export const isLoading = writable(false);
 export const error = writable<string | null>(null);
 
-// prettier-ignore
-// Common fields we want for the torrent list (expand later)
-const torrentFields = [
-  'id', 'name', 'status', 'percentDone', 'totalSize', 'sizeWhenDone',
-  'rateDownload', 'rateUpload', 'eta', 'downloadDir', 'files', 'fileStats',
-  'uploadedEver', 'downloadedEver', 'error', 'errorString',
-  // Additional optional fields
-  'isPrivate', 'addedDate', 'doneDate', 'queuePosition', 'uploadRatio',
-  'peersSendingToUs', 'peersGettingFromUs', 'trackers', 'trackerStats'
-] as const;
-
+// Manual full refresh — triggered by the RefreshButton and called after torrent
+// write actions (add, remove, start/stop) to force an immediate UI update.
 export async function refreshAll() {
   isLoading.set(true);
   error.set(null);
@@ -37,15 +29,16 @@ export async function refreshAll() {
 
   try {
     const [torrentRes, sessionRes] = await Promise.all([
-      callRpc<{ torrents?: Torrent[] }>('torrent-get', {
-        fields: torrentFields
+      transmissionCallRPC<{ torrents?: Torrent[] }>('torrent-get', {
+        fields: [...FULL_INFO_FIELDS]
       }),
-      callRpc('session-get')
+      transmissionCallRPC<TorrentSessionUpdate>('session-get')
     ]);
 
-    torrents.set(torrentRes.torrents ?? []);
+    const torrentList = torrentRes.torrents ?? [];
+    transmissionDataStore.updateTorrentInfoFull(torrentList, sessionRes);
+    torrents.set(transmissionDataStore.getAll().torrents);
     session.set(sessionRes as Record<string, unknown>);
-    await refreshSession(); // Ensure full session fields
   } catch (err: unknown) {
     console.error('Refresh failed:', err);
     const message = err instanceof Error ? err.message : 'Failed to connect to Transmission';
@@ -60,7 +53,7 @@ export async function addTorrent(
   filename: string,
   options: { paused?: boolean; downloadDir?: string } = {}
 ) {
-  return callRpc('torrent-add', {
+  return transmissionCallRPC('torrent-add', {
     filename,
     paused: options.paused ?? false,
     'download-dir': options.downloadDir
@@ -72,7 +65,7 @@ export async function addTorrentMetainfo(
   metainfo: string,
   options: { paused?: boolean; downloadDir?: string } = {}
 ) {
-  return callRpc('torrent-add', {
+  return transmissionCallRPC('torrent-add', {
     metainfo,
     paused: options.paused ?? false,
     'download-dir': options.downloadDir
@@ -81,15 +74,15 @@ export async function addTorrentMetainfo(
 
 // Torrent actions (matches Flood: start/stop/pause/remove)
 export async function startTorrents(ids: number[]) {
-  return callRpc('torrent-start', { ids });
+  return transmissionCallRPC('torrent-start', { ids });
 }
 
 export async function stopTorrents(ids: number[]) {
-  return callRpc('torrent-stop', { ids });
+  return transmissionCallRPC('torrent-stop', { ids });
 }
 
 export async function removeTorrents(ids: number[], deleteData = false) {
-  return callRpc('torrent-remove', { ids, 'delete-local-data': deleteData });
+  return transmissionCallRPC('torrent-remove', { ids, 'delete-local-data': deleteData });
 }
 
 // prettier-ignore
@@ -109,16 +102,24 @@ export async function performActionAndRefresh(ids: number[], action: 'start' | '
   }
 }
 
-// Phase 2: Refresh single torrent details (files/priorities)
+// Cache-first single-torrent refresh. Returns immediately from the in-memory
+// cache when the entry is fresh; falls back to an RPC call when stale/missing.
 export async function refreshTorrent(id: number) {
+  if (!transmissionDataStore.isStale(id)) {
+    const cached = transmissionDataStore.getById(id);
+    if (cached) currentTorrent.set(cached);
+    return;
+  }
   isLoading.set(true);
   try {
-    const res = await callRpc<{ torrents: Torrent[] }>('torrent-get', {
+    const res = await transmissionCallRPC<{ torrents: Torrent[] }>('torrent-get', {
       ids: [id],
-      fields: [...torrentFields, 'files', 'fileStats'] as const
+      fields: [...FULL_INFO_FIELDS]
     });
-    if (res.torrents?.[0]) {
-      currentTorrent.set(res.torrents[0]);
+    const torrent = res.torrents?.[0];
+    if (torrent) {
+      transmissionDataStore.updateTorrentInfoFull([torrent]);
+      currentTorrent.set(torrent);
     }
   } catch (err: unknown) {
     error.set(err instanceof Error ? err.message : 'Torrent details failed');
@@ -129,7 +130,7 @@ export async function refreshTorrent(id: number) {
 
 // Phase 2: Set file priorities
 export async function setFilePriorities(id: number, fileIds: number[], priority: number) {
-  return callRpc('torrent-set', {
+  return transmissionCallRPC('torrent-set', {
     ids: [id],
     'priority-high': priority === 1 ? fileIds : [],
     'priority-low': priority === -1 ? fileIds : [],
@@ -165,13 +166,14 @@ export async function updateFilePriorities(torrentId: number, priorities: Record
   if (wanted.length > 0) args['files-wanted'] = wanted;
   if (unwanted.length > 0) args['files-unwanted'] = unwanted;
 
-  return callRpc('torrent-set', args);
+  return transmissionCallRPC('torrent-set', args);
 }
 
 // Phase 3: Dedicated session refresh/update (for Settings modal)
 export async function refreshSession() {
   try {
-    const res = await callRpc('session-get');
+    const res = await transmissionCallRPC<TorrentSessionUpdate>('session-get');
+    transmissionDataStore.updateTorrentInfoFull([], res);
     session.set(res as Record<string, unknown>);
   } catch (err: unknown) {
     error.set(err instanceof Error ? err.message : 'Session refresh failed');
@@ -180,7 +182,7 @@ export async function refreshSession() {
 
 export async function updateSession(updates: Record<string, unknown>) {
   try {
-    await callRpc('session-set', updates);
+    await transmissionCallRPC('session-set', updates);
     await refreshSession(); // Auto-refresh after apply
   } catch (err: unknown) {
     error.set(err instanceof Error ? err.message : 'Settings save failed');
@@ -188,7 +190,7 @@ export async function updateSession(updates: Record<string, unknown>) {
 }
 
 export async function updateBlocklist(): Promise<number> {
-  const res = await callRpc<{ 'blocklist-size': number }>('blocklist-update');
+  const res = await transmissionCallRPC<{ 'blocklist-size': number }>('blocklist-update');
   await refreshSession();
   return res['blocklist-size'];
 }
@@ -214,7 +216,7 @@ interface TorrentAddRpcResponse {
 export async function addTorrentForSelect(
   filename: string
 ): Promise<{ id: number; name: string; isDuplicate: boolean }> {
-  const res = await callRpc<TorrentAddRpcResponse>('torrent-add', {
+  const res = await transmissionCallRPC<TorrentAddRpcResponse>('torrent-add', {
     filename,
     paused: false
   });
@@ -231,7 +233,7 @@ export async function addTorrentForSelect(
 export async function addTorrentMetainfoForSelect(
   metainfo: string
 ): Promise<{ id: number; name: string; isDuplicate: boolean }> {
-  const res = await callRpc<TorrentAddRpcResponse>('torrent-add', {
+  const res = await transmissionCallRPC<TorrentAddRpcResponse>('torrent-add', {
     metainfo,
     paused: true
   });
@@ -246,7 +248,7 @@ export async function addTorrentMetainfoForSelect(
  * so callers can use whichever subset they need.
  */
 export async function fetchTorrentPeers(id: number): Promise<import('./types').Peer[]> {
-  const res = await callRpc<{ torrents: Array<{ peers?: import('./types').Peer[] }> }>(
+  const res = await transmissionCallRPC<{ torrents: Array<{ peers?: import('./types').Peer[] }> }>(
     'torrent-get',
     { ids: [id], fields: ['peers'] }
   );
@@ -256,6 +258,9 @@ export async function fetchTorrentPeers(id: number): Promise<import('./types').P
 /**
  * Fetch the name, file list, and metadata-completion percentage for a single torrent.
  * Used to poll magnet metadata download progress and to read .torrent file lists.
+ * Always performs a live RPC call — results are intentionally not served from cache
+ * because this function is called in a tight polling loop during magnet resolution
+ * where stale data would cause the workflow to stall.
  */
 export async function getTorrentFilesList(id: number): Promise<{
   id: number;
@@ -263,7 +268,7 @@ export async function getTorrentFilesList(id: number): Promise<{
   metadataPercentComplete: number;
   files?: Array<{ name: string; length: number }>;
 } | null> {
-  const res = await callRpc<{
+  const res = await transmissionCallRPC<{
     torrents: Array<{
       id: number;
       name: string;
@@ -328,28 +333,5 @@ export interface BandwidthPoint {
   timestamp: number; // Date.now()
 }
 
-const MAX_BW_HISTORY = 43200; // 12 h at 1 sample/sec
 export const bandwidthHistory = writable<BandwidthPoint[]>([]);
 export const bandwidthLastPollTime = writable<number>(Date.now());
-
-export async function pollBandwidth(): Promise<void> {
-  try {
-    const res = await callRpc<{ torrents: Array<{ rateDownload: number; rateUpload: number }> }>(
-      'torrent-get',
-      { fields: ['rateDownload', 'rateUpload'] }
-    );
-    const ts = res.torrents ?? [];
-    const point: BandwidthPoint = {
-      download: ts.reduce((sum, t) => sum + (t.rateDownload ?? 0), 0),
-      upload: ts.reduce((sum, t) => sum + (t.rateUpload ?? 0), 0),
-      timestamp: Date.now()
-    };
-    bandwidthHistory.update((h) => {
-      const next = [...h, point];
-      return next.length > MAX_BW_HISTORY ? next.slice(next.length - MAX_BW_HISTORY) : next;
-    });
-    bandwidthLastPollTime.set(Date.now());
-  } catch {
-    // Silently skip — graph will not update this tick
-  }
-}

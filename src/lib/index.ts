@@ -1,7 +1,10 @@
 // place files you want to import through the `$lib` alias in this folder.
 // src/lib/index.ts
 export { loadAppState, writeAppStateBandwidth } from './appstate';
-export { callRpc } from './rpc';
+export { transmissionCallRPC, ensureSessionId } from './rpc';
+export type { RpcRequest, RpcResponse } from './rpc';
+export { transmissionDataStore } from './PollAgent/db';
+export { startPolling, stopPolling } from './PollAgent/poller';
 export {
   refreshAll,
   selectedTorrents,
@@ -32,10 +35,16 @@ export {
   hidePeersTooltip,
   cancelHidePeersTooltip,
   bandwidthHistory,
-  bandwidthLastPollTime,
-  pollBandwidth
+  bandwidthLastPollTime
 } from './stores';
-export type { Torrent, GeoInfo, PeerEntry } from './types';
+export type {
+  Torrent,
+  GeoInfo,
+  PeerEntry,
+  TorrentQuickStats,
+  TorrentInfoFull,
+  TorrentSessionUpdate
+} from './types';
 export type { PeersTooltipState, BandwidthPoint } from './stores';
 export type { DropdownOption } from './components/dropdown.svelte';
 export {
