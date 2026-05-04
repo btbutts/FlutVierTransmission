@@ -151,9 +151,7 @@ $effect(() => {
 
 // ── Live displayed values (interpolated on hover or latest received) ──────────
 // When hovering, the counters linearly interpolate between the two neighbouring
-// sampled data points so the readout tracks the cursor smoothly. Because
-// Transmission rounds rateDownload/rateUpload to the nearest KB (1000 bytes),
-// adjacent integer-KB samples interpolate to fractional KB/s values, giving the
+// sampled data points so the readout tracks the cursor smoothly, giving the
 // user sub-KB precision as the cursor moves across the graph.
 const live = $derived.by(() => {
   const { dl, ul, ts } = aggData;
@@ -183,11 +181,16 @@ const live = $derived.by(() => {
 const altSpeedOn = $derived(Boolean($session['alt-speed-enabled']));
 
 // ── Format helpers ─────────────────────────────────────────────────────────────
+// Uses 1024-based binary units to match formatBytes/formatSpeed in helpers.ts,
+// ensuring bandwidth badge totals are consistent with per-torrent rates in PrimaryTable.
 function fmtBps(bytesPerSec: number): [string, string] {
-  if (bytesPerSec < 1e3) return [bytesPerSec.toFixed(0), 'B/s'];
-  if (bytesPerSec < 1e6) return [(bytesPerSec / 1e3).toFixed(0), 'KB/s'];
-  if (bytesPerSec < 1e9) return [(bytesPerSec / 1e6).toFixed(1), 'MB/s'];
-  return [(bytesPerSec / 1e9).toFixed(2), 'GB/s'];
+  const KiB = 1024;
+  const MiB = 1024 * 1024;
+  const GiB = 1024 * 1024 * 1024;
+  if (bytesPerSec < KiB) return [bytesPerSec.toFixed(0), 'B/s'];
+  if (bytesPerSec < MiB) return [(bytesPerSec / KiB).toFixed(1), 'KB/s'];
+  if (bytesPerSec < GiB) return [(bytesPerSec / MiB).toFixed(1), 'MB/s'];
+  return [(bytesPerSec / GiB).toFixed(2), 'GB/s'];
 }
 
 // "Time since" a timestamp — follows the same plurality style as formatEta in helpers.ts
