@@ -185,8 +185,8 @@ const altSpeedOn = $derived(Boolean($session['alt-speed-enabled']));
 // ensuring bandwidth badge totals are consistent with per-torrent rates in PrimaryTable.
 function fmtBps(bytesPerSec: number): [string, string] {
   const KiB = 1024;
-  const MiB = 1024 * 1024;
-  const GiB = 1024 * 1024 * 1024;
+  const MiB = KiB * 1024;
+  const GiB = MiB * 1024;
   if (bytesPerSec < KiB) return [bytesPerSec.toFixed(0), 'B/s'];
   if (bytesPerSec < MiB) return [(bytesPerSec / KiB).toFixed(1), 'KB/s'];
   if (bytesPerSec < GiB) return [(bytesPerSec / MiB).toFixed(1), 'MB/s'];
