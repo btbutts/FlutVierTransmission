@@ -29,7 +29,23 @@ export default defineConfig(({ mode }) => {
       devSourcemap: true
     },
     server: {
+      // Exclude PollService/ from Vite's file watcher. PollService has its own
+      // tsconfig and build pipeline (tsc, not Vite) — changes there are irrelevant
+      // to the SvelteKit dev server and should not trigger cache flushes or reloads.
+      watch: {
+        ignored: ['**/PollService/**']
+      },
       proxy: {
+        // Forward /api/* to the locally running PollService dev process.
+        // When PollService is running ('npm run dev:pollservice'), requests like
+        // fetch('/api/appstate') are proxied to http://localhost:19091/api/appstate
+        // and serverAvailable becomes true in the browser — mirroring Mode B production.
+        // When PollService is NOT running, requests fail silently and serverAvailable
+        // stays false — mirroring Mode A production. No special dev-mode branching needed.
+        '/api': {
+          target: 'http://localhost:19091',
+          changeOrigin: false
+        },
         '/transmission': {
           target: 'http://10.1.10.172:9092',   // Change if your Transmission is on a different host/port
           changeOrigin: true,

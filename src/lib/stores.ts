@@ -15,6 +15,10 @@ export const selectedTorrents = writable<number[]>([]);
 export const currentTorrent = writable<Torrent | null>(null);
 
 export const torrents = writable<Torrent[]>([]);
+// Throttled snapshot of torrents for the primary table — updated every 15 seconds
+// by the poller and immediately on any manual refresh. Prevents the table rows from
+// re-sorting every second when sorted by UL/DL rate.
+export const tableDisplayTorrents = writable<Torrent[]>([]);
 export const session = writable<Record<string, unknown>>({});
 export const isLoading = writable(false);
 export const error = writable<string | null>(null);
@@ -37,7 +41,9 @@ export async function refreshAll() {
 
     const torrentList = torrentRes.torrents ?? [];
     transmissionDataStore.updateTorrentInfoFull(torrentList, sessionRes);
-    torrents.set(transmissionDataStore.getAll().torrents);
+    const freshTorrents = transmissionDataStore.getAll().torrents;
+    torrents.set(freshTorrents);
+    tableDisplayTorrents.set(freshTorrents);
     session.set(sessionRes as Record<string, unknown>);
   } catch (err: unknown) {
     console.error('Refresh failed:', err);
@@ -335,3 +341,22 @@ export interface BandwidthPoint {
 
 export const bandwidthHistory = writable<BandwidthPoint[]>([]);
 export const bandwidthLastPollTime = writable<number>(Date.now());
+
+/**
+ * Most recent LIVE download/upload rates from the last completed RPC poll.
+ * Written exclusively by the poller on every tick — never by loadAppState or
+ * gap-fill logic — so the bandwidth graph badges always reflect an actual
+ * measurement rather than a historical or zero-filled value.
+ */
+export const liveBandwidthRates = writable<{ download: number; upload: number }>({
+  download: 0,
+  upload: 0
+});
+
+/**
+ * True once `loadAppState()` confirms the companion server is reachable
+ * (i.e. GET /api/appstate returned 200). Defaults false — server is assumed
+ * absent until proven otherwise at startup.
+ * Components gate server-only settings UI on this store.
+ */
+export const serverAvailable = writable<boolean>(false);

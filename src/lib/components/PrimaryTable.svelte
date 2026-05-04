@@ -6,7 +6,7 @@ import {
   layoutMinWidth,
   performActionAndRefresh,
   selectedTorrents,
-  torrents,
+  tableDisplayTorrents,
   type DropdownOption,
   type Torrent
 } from '$lib';
@@ -174,7 +174,7 @@ function handleToggle(event: MouseEvent, id: number) {
 }
 
 const sortedTorrents = $derived(
-  $torrents.toSorted((a, b) => {
+  $tableDisplayTorrents.toSorted((a, b) => {
     if (sortKey === 'activeSeeders') {
       return comparePeerColumn(a, b, (t) => t.peersSendingToUs ?? 0, maxSeedersFor, sortDir);
     }
@@ -331,7 +331,7 @@ function toggleSort(key: string) {
     </div>
   {/if}
   <!-- Loading or Full Table (flex-1 fills viewport) -->
-  {#if $isLoading && $torrents.length === 0}
+  {#if $isLoading && $tableDisplayTorrents.length === 0}
     <div class="flex flex-1 items-center justify-center">
       <div class="text-lg text-gray-500 dark:text-gray-400">Loading torrents...</div>
     </div>

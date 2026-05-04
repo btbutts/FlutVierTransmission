@@ -4,6 +4,7 @@ import { onMount } from 'svelte';
 import { browser } from '$app/environment';
 import {
   refreshSession,
+  serverAvailable,
   session,
   torrents,
   transmissionCallRPC,
@@ -56,7 +57,7 @@ const settingsTabs: Array<{ id: SettingsTab; label: string }> = [
 // ── UI Preferences (client-side only, stored in localStorage) ─────────────────
 // Must match BW_SERVER_PREF_KEY in appstate.ts.
 const bwServerPrefKey = 'flutvierStoreBandwidthOnServer';
-let storeBandwidthOnServer = $state(true);
+let storeBandwidthOnServer = $state(false);
 
 // ── Bandwidth storage tooltip ─────────────────────────────────────────────────
 // The animated modal panel has backdrop-blur-xl, which creates a new CSS
@@ -195,6 +196,12 @@ async function saveSettings() {
   saveStatus = 'saving';
   try {
     await updateSession(tempSettings);
+    // Persist client-side preferences only on explicit save.
+    if (browser) {
+      window.localStorage.setItem(themePreferenceKey, themePreference);
+      window.localStorage.setItem(commonPathsKey, JSON.stringify(commonPaths));
+      window.localStorage.setItem(bwServerPrefKey, String(storeBandwidthOnServer));
+    }
     saveStatus = 'success';
   } catch {
     saveStatus = 'error';
@@ -212,6 +219,29 @@ function handleClosed() {
     clearTimeout(portTestTimer);
     portTestTimer = null;
   }
+  // Revert any unsaved client-side preferences back to what is persisted.
+  if (browser) {
+    const storedTheme = window.localStorage.getItem(themePreferenceKey);
+    if (storedTheme === 'system' || storedTheme === 'light' || storedTheme === 'dark') {
+      themePreference = storedTheme;
+    } else {
+      themePreference = 'system';
+    }
+
+    const storedPaths = window.localStorage.getItem(commonPathsKey);
+    if (storedPaths) {
+      try {
+        commonPaths = JSON.parse(storedPaths) as string[];
+      } catch {
+        commonPaths = [];
+      }
+    } else {
+      commonPaths = [];
+    }
+
+    const storedBwServer = window.localStorage.getItem(bwServerPrefKey);
+    storeBandwidthOnServer = storedBwServer === 'true';
+  }
 }
 
 function resetSettings() {
@@ -220,24 +250,16 @@ function resetSettings() {
 }
 
 // ── Common paths helpers ───────────────────────────────────────────────────────
-function saveCommonPathsToStorage() {
-  if (browser) {
-    window.localStorage.setItem(commonPathsKey, JSON.stringify(commonPaths));
-  }
-}
-
 function addCommonPath() {
   const trimmed = newCommonPath.trim();
   if (trimmed && !commonPaths.includes(trimmed)) {
     commonPaths = [...commonPaths, trimmed];
-    saveCommonPathsToStorage();
   }
   newCommonPath = '';
 }
 
 function removeCommonPath(path: string) {
   commonPaths = commonPaths.filter((p) => p !== path);
-  saveCommonPathsToStorage();
 }
 
 function useCommonPath(path: string) {
@@ -249,7 +271,6 @@ function importTorrentPaths() {
   const toAdd = candidates.filter((p) => !commonPaths.includes(p));
   if (toAdd.length > 0) {
     commonPaths = [...commonPaths, ...toAdd];
-    saveCommonPathsToStorage();
   }
 }
 
@@ -273,14 +294,14 @@ onMount(() => {
 
   const storedBwServer = window.localStorage.getItem(bwServerPrefKey);
   if (storedBwServer !== null) {
-    storeBandwidthOnServer = storedBwServer !== 'false';
+    storeBandwidthOnServer = storedBwServer === 'true';
   }
 });
 
+// Applies the selected theme to the DOM immediately for live preview.
+// Does NOT write to localStorage — that only happens in saveSettings().
 $effect(() => {
   if (!browser) return;
-
-  window.localStorage.setItem(themePreferenceKey, themePreference);
 
   const media = window.matchMedia('(prefers-color-scheme: dark)');
   const applyTheme = () => {
@@ -1195,79 +1216,99 @@ $effect(() => {
           <!-- ══ UI TAB ══════════════════════════════════════════════════════ -->
         {:else if activeTab === 'ui'}
           <div class="text-ColorPalette-text-secondary space-y-6">
-            <!-- Bandwidth Graph -->
+            <!-- Server-side Features -->
             <div>
               <div class="text-ColorPalette-text-secondary mb-3 text-sm font-semibold">
-                Bandwidth Graph
+                Server-side Features
               </div>
-              <div class="flex items-center gap-3">
-                <label class="flex items-center gap-3">
-                  <input
-                    type="checkbox"
-                    checked={storeBandwidthOnServer}
-                    onchange={(e) => {
-                      storeBandwidthOnServer = (e.currentTarget as HTMLInputElement).checked;
-                      if (browser) {
-                        window.localStorage.setItem(
-                          bwServerPrefKey,
-                          String(storeBandwidthOnServer)
-                        );
-                      }
-                    }}
-                    class="text-ColorPalette-modal-TxtAccent-secondary h-4 w-4 rounded border-gray-300 focus:ring-blue-500 focus:outline-none"
-                  />
-                  <span class="text-ColorPalette-text-secondary text-sm font-medium"
-                    >Store bandwidth utilization snapshot on server</span
-                  >
-                </label>
-                <!-- Info icon — hover to reveal Tooltip.svelte -->
-                <button
-                  type="button"
-                  onmouseenter={(e) =>
-                    showCustomTooltip({
-                      triggerEl: e.currentTarget as HTMLElement,
-                      setPos: (pos) => {
-                        bwTooltipPos = pos;
-                      },
-                      setVisible: (v) => {
-                        bwTooltipVisible = v;
-                      },
-                      containingBlockSelector: '.backdrop-blur-xl'
-                    })}
-                  onmouseleave={() =>
-                    hideCustomTooltip((v) => {
-                      bwTooltipVisible = v;
-                    })}
-                  class="cursor-help text-gray-400 hover:text-gray-500 dark:hover:text-gray-300"
-                  aria-label="Information about bandwidth server storage"
-                >
-                  <InformationVariantCircleOutline class="h-4 w-4" />
-                </button>
-                <Tooltip
-                  visible={bwTooltipVisible}
-                  x={bwTooltipPos.x}
-                  y={bwTooltipPos.y}
-                  maxWidth={384}
-                >
-                  <ul
-                    class="list-outside list-disc space-y-2 pl-4 leading-relaxed text-gray-700 dark:text-gray-200"
-                  >
-                    <li>
-                      When enabled, the last five minutes of bandwidth utilization received from the
-                      Transmission RPC server is written to the server every 60 seconds, as well as
-                      immediately upon page refresh.
-                    </li>
-                    <li>
-                      The next time the page loads, if the bandwidth data stored on the server
-                      occurred within the last 12 hours, it will be loaded into the bandwidth graph.
-                    </li>
-                    <li>
-                      Disabling this setting will rely on local browser-caching only, which cannot
-                      survive a page reload, thus the graph will start anew.
-                    </li>
-                  </ul>
-                </Tooltip>
-              </div>
+              {#if $serverAvailable}
+                <div class="space-y-4">
+                  <!-- Store bandwidth utilization snapshot on server -->
+                  <div class="flex items-center gap-3">
+                    <label class="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={storeBandwidthOnServer}
+                        onchange={(e) => {
+                          storeBandwidthOnServer = (e.currentTarget as HTMLInputElement).checked;
+                        }}
+                        class="text-ColorPalette-modal-TxtAccent-secondary h-4 w-4 rounded border-gray-300 focus:ring-blue-500 focus:outline-none"
+                      />
+                      <span class="text-ColorPalette-text-secondary text-sm font-medium"
+                        >Store bandwidth utilization snapshot on server</span
+                      >
+                    </label>
+                    <!-- Info icon — hover to reveal Tooltip.svelte -->
+                    <button
+                      type="button"
+                      onmouseenter={(e) =>
+                        showCustomTooltip({
+                          triggerEl: e.currentTarget as HTMLElement,
+                          setPos: (pos) => {
+                            bwTooltipPos = pos;
+                          },
+                          setVisible: (v) => {
+                            bwTooltipVisible = v;
+                          },
+                          containingBlockSelector: '.backdrop-blur-xl'
+                        })}
+                      onmouseleave={() =>
+                        hideCustomTooltip((v) => {
+                          bwTooltipVisible = v;
+                        })}
+                      class="cursor-help text-gray-400 hover:text-gray-500 dark:hover:text-gray-300"
+                      aria-label="Information about bandwidth server storage"
+                    >
+                      <InformationVariantCircleOutline class="h-4 w-4" />
+                    </button>
+                    <Tooltip
+                      visible={bwTooltipVisible}
+                      x={bwTooltipPos.x}
+                      y={bwTooltipPos.y}
+                      maxWidth={384}
+                    >
+                      <ul
+                        class="list-outside list-disc space-y-2 pl-4 leading-relaxed text-gray-700 dark:text-gray-200"
+                      >
+                        <li>
+                          When enabled, the last five minutes of bandwidth utilization received from
+                          the Transmission RPC server is written to the server every 60 seconds, as
+                          well as immediately upon page refresh.
+                        </li>
+                        <li>
+                          The next time the page loads, if the bandwidth data stored on the server
+                          occurred within the last 12 hours, it will be loaded into the bandwidth
+                          graph.
+                        </li>
+                        <li>
+                          Disabling this setting will rely on local browser-caching only, which
+                          cannot survive a page reload, thus the graph will start anew.
+                        </li>
+                      </ul>
+                    </Tooltip>
+                  </div>
+                  <!-- Use server-side polling (Phase 4 placeholder — not yet functional) -->
+                  <div class="flex items-center gap-3">
+                    <label class="flex cursor-not-allowed items-center gap-3 opacity-50">
+                      <input
+                        type="checkbox"
+                        disabled
+                        class="h-4 w-4 rounded border-gray-300"
+                      />
+                      <span class="text-ColorPalette-text-secondary text-sm font-medium"
+                        >Use server-side polling</span
+                      >
+                    </label>
+                    <span class="text-ColorPalette-text-tertiary text-xs italic">coming soon</span>
+                  </div>
+                </div>
+              {:else}
+                <p class="text-ColorPalette-text-tertiary text-sm">
+                  Optional server-side features are available when the FlutVier companion server is
+                  installed on this host. Set up the companion server to enable bandwidth persistence
+                  and server-side polling.
+                </p>
+              {/if}
             </div>
           </div>
         {/if}

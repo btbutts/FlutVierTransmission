@@ -6,6 +6,9 @@
 	"scripts": {
 		"dev": "vite dev",
 		"build": "vite build",
+		"build:pollservice": "cd PollService && npm install --silent && npm run build",
+		"build:all": "npm run build && npm run build:pollservice",
+		"dev:pollservice": "cd PollService && npm run dev",
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
@@ -20,6 +23,7 @@
 		"@iconify-json/flagpack": "^1.2.7",
 		"@iconify-json/mdi": "^1.2.3",
 		"@sveltejs/adapter-auto": "^7.0.0",
+		"@sveltejs/adapter-static": "^3.0.10",
 		"@sveltejs/kit": "^2.50.2",
 		"@sveltejs/vite-plugin-svelte": "^6.2.4",
 		"@tailwindcss/vite": "^4.2.2",

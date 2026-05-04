@@ -4,27 +4,30 @@
 
 import { get } from 'svelte/store';
 
-import { bandwidthHistory, type BandwidthPoint } from './stores';
+import { bandwidthHistory, serverAvailable, type BandwidthPoint } from './stores';
 import type { GeoInfo } from './types';
 
 // Must match CACHE_KEY in helpers.ts. Not imported from there to avoid a circular dependency
 // (helpers.ts imports writeAppStateGeoEntry from this module).
 const GEO_CACHE_KEY = 'ip_geo_cache';
 
-// Five minutes of bandwidth samples at one sample per second.
-const BW_HISTORY_LIMIT = 300;
+// One hour of bandwidth samples sent per periodic write (one sample per second).
+// Keepalive writes (on beforeunload) are capped lower to stay within the browser's
+// ~64 KB keepalive payload limit.
+const BW_HISTORY_LIMIT = 3600;
+const BW_KEEPALIVE_LIMIT = 600;
 
 // localStorage key for the "Store bandwidth utilization snapshot on server" UI preference.
 // Must match bwServerPrefKey in SettingsModal.svelte.
 const BW_SERVER_PREF_KEY = 'flutvierStoreBandwidthOnServer';
 
-/** Returns true (default) when the user has opted in to server-side bandwidth persistence. */
+/** Returns true only when the user has explicitly opted in to server-side bandwidth persistence. */
 function isBandwidthServerEnabled(): boolean {
   try {
     const stored = localStorage.getItem(BW_SERVER_PREF_KEY);
-    return stored !== 'false'; // unset → default true; any value other than 'false' → true
+    return stored === 'true'; // unset → default false; must explicitly opt in
   } catch {
-    return true;
+    return false;
   }
 }
 
@@ -33,7 +36,7 @@ function isBandwidthServerEnabled(): boolean {
 /**
  * Fetches the server-persisted appstate and merges it into the live app:
  *   - bandwidth history is prepended to the in-memory store so the graph
- *     immediately shows the previous five minutes of data on page load.
+ *     immediately shows historical data on page load (up to the stored window).
  *   - geo cache entries are merged into localStorage so getCachedGeoLookup
  *     picks them up without any additional changes to the lookup path.
  *
@@ -43,7 +46,11 @@ function isBandwidthServerEnabled(): boolean {
 export async function loadAppState(): Promise<void> {
   try {
     const res = await fetch('/api/appstate');
-    if (!res.ok) return;
+    if (!res.ok) {
+      serverAvailable.set(false);
+      return;
+    }
+    serverAvailable.set(true);
 
     const state = (await res.json()) as {
       bandwidth?: BandwidthPoint[];
@@ -63,12 +70,17 @@ export async function loadAppState(): Promise<void> {
         // from a previous session would fill the current view window and display
         // stale values as if they were live. We prevent this by inserting one
         // zero-value entry per elapsed second between the last saved sample and
-        // now, so the "current" portion of the graph correctly shows zeros until
-        // live polls start arriving.
-        const gapSeconds = Math.min(
-          Math.round((now - latestServerTs) / 1000),
-          43200 // cap at the 12-hour store limit
-        );
+        // (now - GAP_BUFFER_S), so the "current" portion of the graph correctly
+        // shows zeros until live polls start arriving.
+        //
+        // GAP_BUFFER_S: the gap fill intentionally stops 3 seconds before "now".
+        // This prevents a spike-to-zero on page load: without the buffer, the last
+        // gap-fill zero would land at exactly "now", immediately before the first
+        // live poll (~1 s later), and the Catmull-Rom curve would draw a visible
+        // dip to zero at the right edge of the graph.
+        const GAP_BUFFER_S = 3;
+        const rawGapSeconds = Math.round((now - latestServerTs) / 1000);
+        const gapSeconds = Math.min(Math.max(0, rawGapSeconds - GAP_BUFFER_S), 43200);
         const gapFill: BandwidthPoint[] = Array.from({ length: gapSeconds }, (_, i) => ({
           download: 0,
           upload: 0,
@@ -79,7 +91,8 @@ export async function loadAppState(): Promise<void> {
         bandwidthHistory.update((current) => {
           // Preserve any live samples collected before this async call resolved.
           const liveNewer = current.filter((p) => p.timestamp > lastGapTs);
-          return [...state.bandwidth!, ...gapFill, ...liveNewer];
+          const merged = [...state.bandwidth!, ...gapFill, ...liveNewer];
+          return merged.length > 43200 ? merged.slice(-43200) : merged;
         });
       }
     }
@@ -103,6 +116,7 @@ export async function loadAppState(): Promise<void> {
       }
     }
   } catch {
+    serverAvailable.set(false);
     // Server unreachable or returned malformed JSON — the app works fine without persistence.
   }
 }
@@ -110,14 +124,21 @@ export async function loadAppState(): Promise<void> {
 // ── Periodic writes ────────────────────────────────────────────────────────────
 
 /**
- * Writes the most recent BW_HISTORY_LIMIT (300) bandwidth samples to the server.
- * Call every 60 seconds from +layout.svelte's setInterval, and on beforeunload
- * with keepalive=true so the browser delivers the request even as the page closes.
+ * Writes recent bandwidth history to the server.
+ *
+ * Normal writes (keepalive=false): sends the last BW_HISTORY_LIMIT samples (1 hour).
+ * The server merges these with older stored history rather than replacing it, so
+ * the rolling 12-hour window accumulates across multiple writes and sessions.
+ *
+ * Keepalive writes (keepalive=true, on beforeunload): capped at BW_KEEPALIVE_LIMIT
+ * to stay within the browser's ~64 KB keepalive payload limit.
+ *
  * No-ops silently if the store is empty or the server is unreachable.
  */
 export async function writeAppStateBandwidth(keepalive = false): Promise<void> {
-  if (!isBandwidthServerEnabled()) return;
-  const points = get(bandwidthHistory).slice(-BW_HISTORY_LIMIT);
+  if (!get(serverAvailable) || !isBandwidthServerEnabled()) return;
+  const limit = keepalive ? BW_KEEPALIVE_LIMIT : BW_HISTORY_LIMIT;
+  const points = get(bandwidthHistory).slice(-limit);
   if (!points.length) return;
   try {
     await fetch('/api/appstate', {
@@ -139,6 +160,7 @@ export async function writeAppStateBandwidth(keepalive = false): Promise<void> {
  * No-ops silently if the server is unreachable.
  */
 export async function writeAppStateGeoEntry(ip: string, info: GeoInfo): Promise<void> {
+  if (!get(serverAvailable)) return;
   try {
     await fetch('/api/appstate', {
       method: 'PATCH',

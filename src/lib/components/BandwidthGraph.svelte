@@ -149,10 +149,12 @@ $effect(() => {
   if (_latestMinV === 0 && displayMinV > 0) displayMinV = 0;
 });
 
-// ── Live displayed values (nearest actual sample or latest received) ──────────
-// When hovering, the counters snap to the nearest ACTUAL sampled data point rather
-// than linearly interpolating between two neighbours — interpolated values would
-// be estimates, not real measurements.
+// ── Live displayed values (interpolated on hover or latest received) ──────────
+// When hovering, the counters linearly interpolate between the two neighbouring
+// sampled data points so the readout tracks the cursor smoothly. Because
+// Transmission rounds rateDownload/rateUpload to the nearest KB (1000 bytes),
+// adjacent integer-KB samples interpolate to fractional KB/s values, giving the
+// user sub-KB precision as the cursor moves across the graph.
 const live = $derived.by(() => {
   const { dl, ul, ts } = aggData;
   const h = $bandwidthHistory;
@@ -162,12 +164,10 @@ const live = $derived.by(() => {
     const lo = Math.max(0, Math.min(n - 1, Math.floor(fi)));
     const hi = Math.min(n, lo + 1);
     const fr = fi - lo;
-    // Snap to whichever sampled point the cursor is closest to.
-    const nearest = fr < 0.5 ? lo : hi;
     return {
-      dl: dl[nearest],
-      ul: ul[nearest],
-      ts: ts[nearest],
+      dl: dl[lo] + (dl[hi] - dl[lo]) * fr,
+      ul: ul[lo] + (ul[hi] - ul[lo]) * fr,
+      ts: ts[lo],
       isHover: true
     };
   }
@@ -185,7 +185,7 @@ const altSpeedOn = $derived(Boolean($session['alt-speed-enabled']));
 // ── Format helpers ─────────────────────────────────────────────────────────────
 function fmtBps(bytesPerSec: number): [string, string] {
   if (bytesPerSec < 1e3) return [bytesPerSec.toFixed(0), 'B/s'];
-  if (bytesPerSec < 1e6) return [(bytesPerSec / 1e3).toFixed(1), 'KB/s'];
+  if (bytesPerSec < 1e6) return [(bytesPerSec / 1e3).toFixed(0), 'KB/s'];
   if (bytesPerSec < 1e9) return [(bytesPerSec / 1e6).toFixed(1), 'MB/s'];
   return [(bytesPerSec / 1e9).toFixed(2), 'GB/s'];
 }
@@ -309,12 +309,10 @@ function getCH(W: number, H: number, anim: number) {
   const hi = Math.min(n, lo + 1);
   const fr = fi - lo;
 
-  // Snap crosshair dots to the nearest actual data point, matching the counters.
-  const nearest = fr < 0.5 ? lo : hi;
   return {
     x,
-    dlY: yOf(dl[nearest]),
-    ulY: yOf(ul[nearest])
+    dlY: yOf(dl[lo] + (dl[hi] - dl[lo]) * fr),
+    ulY: yOf(ul[lo] + (ul[hi] - ul[lo]) * fr)
   };
 }
 

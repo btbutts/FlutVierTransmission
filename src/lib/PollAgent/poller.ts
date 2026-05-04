@@ -11,7 +11,7 @@
 // rather than waiting 20 seconds for the first full refresh.
 
 import { transmissionCallRPC } from '../rpc';
-import { bandwidthHistory, bandwidthLastPollTime, session, torrents } from '../stores';
+import { bandwidthHistory, bandwidthLastPollTime, liveBandwidthRates, session, tableDisplayTorrents, torrents } from '../stores';
 import type { Torrent, TorrentQuickStats, TorrentSessionUpdate } from '../types';
 import { FULL_INFO_FIELDS, QUICK_STATS_FIELDS, transmissionDataStore } from './db';
 
@@ -26,6 +26,9 @@ export function startPolling(): void {
   intervalId = setInterval(async () => {
     tickCount++;
     const isFullPollTick = tickCount === 1 || tickCount % 20 === 0;
+    // Table display refreshes every 15 s so that sorting by UL/DL doesn't
+    // reorder rows every second. Also fires on tick 1 to populate on startup.
+    const isTableDisplayTick = tickCount === 1 || tickCount % 15 === 0;
 
     try {
       if (isFullPollTick) {
@@ -44,20 +47,21 @@ export function startPolling(): void {
 
         // Compute aggregate bandwidth from the full response.
         const now = Date.now();
+        const dlFull = fullTorrents.reduce((sum, t) => sum + (t.rateDownload ?? 0), 0);
+        const ulFull = fullTorrents.reduce((sum, t) => sum + (t.rateUpload ?? 0), 0);
         bandwidthHistory.update((history) => {
-          const point = {
-            download: fullTorrents.reduce((sum, t) => sum + (t.rateDownload ?? 0), 0),
-            upload: fullTorrents.reduce((sum, t) => sum + (t.rateUpload ?? 0), 0),
-            timestamp: now
-          };
+          const point = { download: dlFull, upload: ulFull, timestamp: now };
           const next = [...history, point];
           return next.length > 43200 ? next.slice(-43200) : next;
         });
+        liveBandwidthRates.set({ download: dlFull, upload: ulFull });
         bandwidthLastPollTime.set(now);
 
         // Update DB and Svelte stores.
         transmissionDataStore.updateTorrentInfoFull(fullTorrents, sessionInfoResponse);
-        torrents.set(transmissionDataStore.getAll().torrents);
+        const fullList = transmissionDataStore.getAll().torrents;
+        torrents.set(fullList);
+        if (isTableDisplayTick) tableDisplayTorrents.set(fullList);
         if (sessionInfoResponse) {
           session.set(sessionInfoResponse as Record<string, unknown>);
         }
@@ -71,20 +75,21 @@ export function startPolling(): void {
 
         // Compute aggregate bandwidth from the light response.
         const now = Date.now();
+        const dlQuick = quickStatsTorrents.reduce((sum, t) => sum + (t.rateDownload ?? 0), 0);
+        const ulQuick = quickStatsTorrents.reduce((sum, t) => sum + (t.rateUpload ?? 0), 0);
         bandwidthHistory.update((history) => {
-          const point = {
-            download: quickStatsTorrents.reduce((sum, t) => sum + (t.rateDownload ?? 0), 0),
-            upload: quickStatsTorrents.reduce((sum, t) => sum + (t.rateUpload ?? 0), 0),
-            timestamp: now
-          };
+          const point = { download: dlQuick, upload: ulQuick, timestamp: now };
           const next = [...history, point];
           return next.length > 43200 ? next.slice(-43200) : next;
         });
+        liveBandwidthRates.set({ download: dlQuick, upload: ulQuick });
         bandwidthLastPollTime.set(now);
 
         // Merge into DB and push updated list to Svelte store.
         transmissionDataStore.updateTorrentQuickStats(quickStatsTorrents);
-        torrents.set(transmissionDataStore.getAll().torrents);
+        const lightList = transmissionDataStore.getAll().torrents;
+        torrents.set(lightList);
+        if (isTableDisplayTick) tableDisplayTorrents.set(lightList);
       }
     } catch (err) {
       console.error('Transmission poll failed:', err);

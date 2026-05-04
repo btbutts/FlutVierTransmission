@@ -8,6 +8,7 @@ export { startPolling, stopPolling } from './PollAgent/poller';
 export {
   refreshAll,
   selectedTorrents,
+  tableDisplayTorrents,
   torrents,
   session,
   isLoading,
@@ -35,7 +36,9 @@ export {
   hidePeersTooltip,
   cancelHidePeersTooltip,
   bandwidthHistory,
-  bandwidthLastPollTime
+  bandwidthLastPollTime,
+  liveBandwidthRates,
+  serverAvailable
 } from './stores';
 export type {
   Torrent,
