@@ -1,6 +1,6 @@
 // place files you want to import through the `$lib` alias in this folder.
 // src/lib/index.ts
-export { loadAppState, writeAppStateBandwidth } from './appstate';
+export { detectServer, loadAppState, writeAppStateBandwidth } from './appstate';
 export { transmissionCallRPC, ensureSessionId } from './rpc';
 export type { RpcRequest, RpcResponse } from './rpc';
 export { transmissionDataStore } from './PollAgent/db';

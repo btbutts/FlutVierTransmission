@@ -11,7 +11,9 @@ import CircleSmall from '~icons/mdi/circle-small';
 import Close from '~icons/mdi/close';
 import Cog from '~icons/mdi/cog';
 import Cogs from '~icons/mdi/cogs';
+import ContentCopy from '~icons/mdi/content-copy';
 import Delete from '~icons/mdi/delete';
+import Download from '~icons/mdi/download';
 import FileFind from '~icons/mdi/file-find';
 import Forwardburger from '~icons/mdi/forwardburger';
 import InformationVariantCircleOutline from '~icons/mdi/information-variant-circle-outline';
@@ -37,7 +39,9 @@ export {
   Cog,
   Check,
   Close,
+  ContentCopy,
   Backburger,
+  Download,
   FileFind,
   Forwardburger,
   InformationVariantCircleOutline,

@@ -7,7 +7,14 @@
      Negative phase: the same four arcs converge back to 0° clockwise over 1.5 s,
      erasing the circle. The cycle then repeats.
 
-     onanimationiteration on Icon 4 fires at every 1.5 s cycle boundary.
+     Each phase animation runs exactly once (iteration-count: 1) with fill-mode:
+     forwards so that icons freeze at their final keyframe values while Svelte
+     swaps the animation classes at the phase boundary. Without this, the
+     animations would loop back to their 0% keyframes (the full-circle state)
+     for one rendered frame before the class swap could land, producing a
+     momentary flash of the complete circle at the start of every positive phase.
+
+     onanimationend on Icon 4 fires at every 1.5 s phase boundary.
      When stopAtBoundary becomes true the next boundary calls onStopped instead
      of toggling the phase, letting the parent decide when to unmount the spinner.
      The banner runs indefinitely when stopAtBoundary is false (the default). -->
@@ -52,7 +59,8 @@ function handleIteration() {
     Icon 4: holds at Q3 (phases 1–3); all four converge to Q2 in phase 4.
   End state: all icons reunited at 360°=Q2, ready for the next positive phase.
 
-  onanimationiteration on Icon 4 fires at every 1.5s cycle boundary.
+  onanimationend on Icon 4 fires at every 1.5s phase boundary (each animation
+  runs once with fill-mode: forwards — see file header comment for why).
 -->
 <span class="relative inline-flex shrink-0 {className}">
   <!-- Icon 1: static anchor in positive; leads the erasure in negative -->
@@ -70,10 +78,10 @@ function handleIteration() {
   <span class="absolute inset-0 {animPhase === 'positive' ? 'arc-3-pos' : 'arc-3-neg'}">
     <Loading class="h-full w-full" />
   </span>
-  <!-- Icon 4: last to reach each quadrant; its animationiteration drives cycle boundaries -->
+  <!-- Icon 4: last to reach each quadrant; its animationend drives phase boundaries -->
   <span
     class="absolute inset-0 {animPhase === 'positive' ? 'arc-4-pos' : 'arc-4-neg'}"
-    onanimationiteration={handleIteration}
+    onanimationend={handleIteration}
   >
     <Loading class="h-full w-full" />
   </span>
@@ -82,7 +90,9 @@ function handleIteration() {
 <style>
 /* ── Positive phase: paint circle Q2 → Q1 → Q4 → Q3 ──────────────────────────
      25% of 1.5s = 0.375s per quarter-turn phase.
-     Each icon sweeps to its landing quadrant and then holds for the remainder.     */
+     Each icon sweeps to its landing quadrant and then holds for the remainder.
+     iteration-count: 1 + fill-mode: forwards freezes each icon at its final
+     keyframe value so the class swap to negative phase is seamless.           */
 
 .arc-2-pos,
 .arc-3-pos,
@@ -91,13 +101,13 @@ function handleIteration() {
   will-change: transform;
 }
 .arc-2-pos {
-  animation: paint-arc-2-pos 1.5s linear infinite;
+  animation: paint-arc-2-pos 1.5s linear 1 forwards;
 }
 .arc-3-pos {
-  animation: paint-arc-3-pos 1.5s linear infinite;
+  animation: paint-arc-3-pos 1.5s linear 1 forwards;
 }
 .arc-4-pos {
-  animation: paint-arc-4-pos 1.5s linear infinite;
+  animation: paint-arc-4-pos 1.5s linear 1 forwards;
 }
 
 /* Paints Q1 in phase 1, then holds */
@@ -149,7 +159,9 @@ function handleIteration() {
 /* ── Negative phase: erase circle Q2 → Q1 → Q4 → Q3 → Q2 ────────────────────
      Starts from the full-circle state (0°, 90°, 180°, 270°) that positive left.
      Each icon holds at its current quadrant until the "sweep wave" reaches it,
-     then follows all preceding icons clockwise until all reunite at Q2 (360°=0°).  */
+     then follows all preceding icons clockwise until all reunite at Q2 (360°=0°).
+     iteration-count: 1 + fill-mode: forwards freezes all icons at 360° (= 0°,
+     the empty state) so the class swap back to positive phase is seamless.    */
 
 .arc-1-neg,
 .arc-2-neg,
@@ -159,16 +171,16 @@ function handleIteration() {
   will-change: transform;
 }
 .arc-1-neg {
-  animation: paint-arc-1-neg 1.5s linear infinite;
+  animation: paint-arc-1-neg 1.5s linear 1 forwards;
 }
 .arc-2-neg {
-  animation: paint-arc-2-neg 1.5s linear infinite;
+  animation: paint-arc-2-neg 1.5s linear 1 forwards;
 }
 .arc-3-neg {
-  animation: paint-arc-3-neg 1.5s linear infinite;
+  animation: paint-arc-3-neg 1.5s linear 1 forwards;
 }
 .arc-4-neg {
-  animation: paint-arc-4-neg 1.5s linear infinite;
+  animation: paint-arc-4-neg 1.5s linear 1 forwards;
 }
 
 /* Icon 1 leads: erases Q2 immediately, sweeps through every quadrant */

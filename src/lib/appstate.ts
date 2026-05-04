@@ -31,6 +31,23 @@ function isBandwidthServerEnabled(): boolean {
   }
 }
 
+// ── Server detection ──────────────────────────────────────────────────────────
+
+/**
+ * Probes /api/appstate to check whether the PollService companion is reachable,
+ * then updates the serverAvailable store accordingly. Unlike loadAppState(), this
+ * does not load or merge any persisted data — it is a lightweight re-check
+ * intended for use after the user installs the companion without refreshing the page.
+ */
+export async function detectServer(): Promise<void> {
+  try {
+    const res = await fetch('/api/appstate');
+    serverAvailable.set(res.ok);
+  } catch {
+    serverAvailable.set(false);
+  }
+}
+
 // ── Startup: load persisted state into the live app ───────────────────────────
 
 /**
