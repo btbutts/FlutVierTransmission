@@ -1,4 +1,4 @@
-<!-- src/lib/components/modals/AddTorrentChildModal.svelte -->
+<!-- src/lib/components/modals/addTorrent/AddTorrentChildModal.svelte -->
 <script lang="ts">
 import { onDestroy, untrack } from 'svelte';
 import {

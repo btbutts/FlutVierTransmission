@@ -1,10 +1,10 @@
-<!-- src/lib/components/modals/AddTorrentMasterModal.svelte -->
+<!-- src/lib/components/modals/addTorrent/AddTorrentMasterModal.svelte -->
 <script lang="ts">
 import { tick } from 'svelte';
 import { addTorrent, addTorrentMetainfo, error, refreshAll } from '$lib';
 
 import AddTorrentButton from '$lib/components/buttons/AddTorrentButton.svelte';
-import AddTorrentChildModal from '$lib/components/modals/AddTorrentChildModal.svelte';
+import AddTorrentChildModal from '$lib/components/modals/addTorrent/AddTorrentChildModal.svelte';
 import { windowPopUp } from '$lib/helpers';
 import { Close, FileFind, Forwardburger } from '$lib/plugins';
 

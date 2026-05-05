@@ -18,7 +18,7 @@ import BandwidthGraph from '$lib/components/animations/BandwidthGraph.svelte';
 import AddTorrentButton from '$lib/components/buttons/AddTorrentButton.svelte';
 import RefreshButton from '$lib/components/buttons/RefreshButton.svelte';
 import SettingsButton from '$lib/components/buttons/SettingsButton.svelte';
-import AddTorrentMasterModal from '$lib/components/modals/AddTorrentMasterModal.svelte';
+import AddTorrentMasterModal from '$lib/components/modals/addTorrent/AddTorrentMasterModal.svelte';
 import SettingsModal from '$lib/components/modals/settings/SettingsModal.svelte';
 import PeersTooltipPortal from '$lib/components/tooltips/PeersTooltipPortal.svelte';
 import { createHorizontalScrollSync } from '$lib/horizontalScrollSync.svelte';
