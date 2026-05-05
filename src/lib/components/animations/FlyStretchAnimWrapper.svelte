@@ -1,8 +1,8 @@
-<!-- src/lib/components/FlyStretchModal.svelte
+<!-- src/lib/components/animations/FlyStretchAnimWrapper.svelte
      Generic fly-out / stretch-in open animation wrapper for pop-up modals.
 
      Usage:
-       <FlyStretchModal
+       <FlyStretchAnimWrapper
          bind:open={isOpen}
          getTriggerRect={() => triggerEl?.getBoundingClientRect() ?? null}
          maxWidth={700}

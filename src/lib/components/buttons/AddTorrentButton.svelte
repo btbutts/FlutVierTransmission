@@ -1,4 +1,4 @@
-<!-- src/lib/components/AddTorrentButton.svelte -->
+<!-- src/lib/components/buttons/AddTorrentButton.svelte -->
 <script lang="ts">
 import { Plus } from '$lib/plugins';
 

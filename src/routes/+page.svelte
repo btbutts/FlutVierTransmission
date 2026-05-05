@@ -1,8 +1,8 @@
 <script lang="ts">
 import { currentTorrent, refreshTorrent, type Torrent } from '$lib';
 
-import PrimaryTable from '$lib/components/PrimaryTable.svelte';
-import TorrentInfoModal from '$lib/components/TorrentInfoModal.svelte';
+import TorrentInfoModal from '$lib/components/modals/TorrentInfoModal.svelte';
+import PrimaryTable from '$lib/components/tables/PrimaryTable.svelte';
 
 let torrentInfoOpen = $state(false);
 let triggerRectForModal = $state<DOMRect | null>(null);
@@ -17,7 +17,4 @@ function handleOpenFiles(torrent: Torrent, triggerRect: DOMRect) {
 
 <PrimaryTable onOpenFiles={handleOpenFiles} />
 
-<TorrentInfoModal
-  bind:open={torrentInfoOpen}
-  getTriggerRect={() => triggerRectForModal}
-/>
+<TorrentInfoModal bind:open={torrentInfoOpen} getTriggerRect={() => triggerRectForModal} />

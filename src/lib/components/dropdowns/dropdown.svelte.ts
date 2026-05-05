@@ -1,4 +1,4 @@
-// src/lib/components/dropdown.svelte.ts
+// src/lib/components/dropdowns/dropdown.svelte.ts
 export interface DropdownOption<T = number> {
   value: T;
   label: string;

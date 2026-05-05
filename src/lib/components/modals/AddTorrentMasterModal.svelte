@@ -1,13 +1,12 @@
-<!-- src/lib/components/AddTorrentMasterModal.svelte -->
+<!-- src/lib/components/modals/AddTorrentMasterModal.svelte -->
 <script lang="ts">
 import { tick } from 'svelte';
 import { addTorrent, addTorrentMetainfo, error, refreshAll } from '$lib';
 
+import AddTorrentButton from '$lib/components/buttons/AddTorrentButton.svelte';
+import AddTorrentChildModal from '$lib/components/modals/AddTorrentChildModal.svelte';
 import { windowPopUp } from '$lib/helpers';
 import { Close, FileFind, Forwardburger } from '$lib/plugins';
-
-import AddTorrentButton from './AddTorrentButton.svelte';
-import AddTorrentChildModal from './AddTorrentChildModal.svelte';
 
 interface Props {
   /** Controls modal visibility — bindable so parent can open/close */

@@ -1,13 +1,13 @@
-<!-- src/lib/components/TorrentInfoModal.svelte
+<!-- src/lib/components/modals/TorrentInfoModal.svelte
      Per-torrent file list modal, animated via FlyStretchAnimationWrapper.
      Opens with a fly-stretch from the double-clicked table row;
      closes by flying back to that same row position. -->
 <script lang="ts">
 import { currentTorrent, error, isLoading, refreshTorrent, updateFilePriorities } from '$lib';
 
-import DDSelector from '$lib/components/DDSelector.svelte';
-import FlyStretchAnimationWrapper from '$lib/components/FlyStretchAnimWrapper.svelte';
-import RefreshButton from '$lib/components/RefreshButton.svelte';
+import FlyStretchAnimationWrapper from '$lib/components/animations/FlyStretchAnimWrapper.svelte';
+import RefreshButton from '$lib/components/buttons/RefreshButton.svelte';
+import DDSelector from '$lib/components/dropdowns/DDSelector.svelte';
 import { formatBytes } from '$lib/helpers';
 
 interface Props {

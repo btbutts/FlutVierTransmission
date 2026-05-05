@@ -1,7 +1,7 @@
+<!-- src/lib/components/buttons/SaveButton.svelte -->
 <script lang="ts">
+import LoadingArcSpinner from '$lib/components/animations/LoadingArcSpinner.svelte';
 import { Check } from '$lib/plugins';
-
-import LoadingArcSpinner from './LoadingArcSpinner.svelte';
 
 interface Props {
   saveStatus: 'idle' | 'saving' | 'success' | 'error';

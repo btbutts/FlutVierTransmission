@@ -1,4 +1,4 @@
-<!-- src/lib/components/SettingsButton.svelte -->
+<!-- src/lib/components/buttons/SettingsButton.svelte -->
 <script lang="ts">
 import { Cog } from '$lib/plugins';
 

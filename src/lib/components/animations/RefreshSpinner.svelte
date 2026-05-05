@@ -1,4 +1,4 @@
-<!-- src/lib/components/RefreshSpinner.svelte
+<!-- src/lib/components/animations/RefreshSpinner.svelte
      Reusable mdi-Refresh spinner with a graceful "at least one full revolution"
      guarantee.
 

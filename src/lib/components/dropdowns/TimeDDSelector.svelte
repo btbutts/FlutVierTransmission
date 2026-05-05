@@ -1,4 +1,4 @@
-<!-- src/lib/components/TimeDDSelector.svelte -->
+<!-- src/lib/components/dropdowns/TimeDDSelector.svelte -->
 <script lang="ts">
 import { tick, untrack } from 'svelte';
 

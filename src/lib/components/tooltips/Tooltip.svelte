@@ -1,4 +1,4 @@
-<!-- src/lib/components/Tooltip.svelte
+<!-- src/lib/components/tooltips/Tooltip.svelte
      Generic, reusable tooltip rendered at fixed viewport coordinates.
      Styled to match PeersTooltipPortal for visual consistency across the app.
      Pass content via the children snippet; the caller controls text and markup.

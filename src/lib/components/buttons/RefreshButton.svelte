@@ -1,5 +1,6 @@
+<!-- src/lib/components/buttons/RefreshButton.svelte -->
 <script lang="ts">
-import RefreshSpinner from './RefreshSpinner.svelte';
+import RefreshSpinner from '$lib/components/animations/RefreshSpinner.svelte';
 
 interface Props {
   loading?: boolean;

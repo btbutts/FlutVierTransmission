@@ -1,15 +1,14 @@
-<!-- src/lib/components/BandwidthGraph.svelte -->
+<!-- src/lib/components/animations/BandwidthGraph.svelte -->
 <script lang="ts">
 import { onMount } from 'svelte';
 import { get } from 'svelte/store';
 import { bandwidthHistory, bandwidthLastPollTime, session } from '$lib';
 
+import FlyStretchAnimationWrapper from '$lib/components/animations/FlyStretchAnimWrapper.svelte';
+import LoadingArcSpinner from '$lib/components/animations/LoadingArcSpinner.svelte';
+import Tooltip from '$lib/components/tooltips/Tooltip.svelte';
 import { hideCustomTooltip, showCustomTooltip } from '$lib/helpers';
 import { ArrowDownBox, ArrowUpBox, Close } from '$lib/plugins';
-
-import FlyStretchAnimationWrapper from './FlyStretchAnimWrapper.svelte';
-import LoadingArcSpinner from './LoadingArcSpinner.svelte';
-import Tooltip from './Tooltip.svelte';
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 const GRAPH_H = 78;

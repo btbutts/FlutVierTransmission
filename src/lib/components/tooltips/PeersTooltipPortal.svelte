@@ -1,3 +1,4 @@
+<!-- src/lib/components/tooltips/PeersTooltipPortal.svelte -->
 <script lang="ts">
 import { SvelteMap } from 'svelte/reactivity';
 import data from '@iconify-json/flagpack/icons.json';

@@ -1,4 +1,4 @@
-<!-- src/lib/components/AddTorrentChildModal.svelte -->
+<!-- src/lib/components/modals/AddTorrentChildModal.svelte -->
 <script lang="ts">
 import { onDestroy, untrack } from 'svelte';
 import {
@@ -13,11 +13,10 @@ import {
   updateFilePriorities
 } from '$lib';
 
+import AddTorrentButton from '$lib/components/buttons/AddTorrentButton.svelte';
+import DDSelector from '$lib/components/dropdowns/DDSelector.svelte';
 import { formatBytes } from '$lib/helpers';
 import { Backburger, Loading } from '$lib/plugins';
-
-import AddTorrentButton from './AddTorrentButton.svelte';
-import DDSelector from './DDSelector.svelte';
 
 // ── Props ──────────────────────────────────────────────────────────────────────
 interface Props {

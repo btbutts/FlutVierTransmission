@@ -1,4 +1,4 @@
-<!-- src/lib/components/LoadingArcSpinner.svelte
+<!-- src/lib/components/animations/LoadingArcSpinner.svelte
      Reusable 4-arc "paint-and-erase" loading spinner.
 
      Positive phase: four mdi-loading arcs sweep clockwise one quarter at a time,

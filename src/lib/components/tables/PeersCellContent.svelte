@@ -1,3 +1,4 @@
+<!-- src/lib/components/tables/PeersCellContent.svelte -->
 <script module lang="ts">
 // Module-level singleton — shared across ALL PeersCellContent instances.
 // Tracks which column mode (seeders | leechers) was most recently activated

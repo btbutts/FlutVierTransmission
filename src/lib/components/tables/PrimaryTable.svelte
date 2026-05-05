@@ -1,3 +1,4 @@
+<!-- src/lib/components/tables/PrimaryTable.svelte -->
 <script lang="ts">
 import { onMount } from 'svelte';
 import {
@@ -11,8 +12,8 @@ import {
   type Torrent
 } from '$lib';
 
-import DDSelector from '$lib/components/DDSelector.svelte';
-import PeersCellContent from '$lib/components/PeersCellContent.svelte';
+import DDSelector from '$lib/components/dropdowns/DDSelector.svelte';
+import PeersCellContent from '$lib/components/tables/PeersCellContent.svelte';
 import { defaultColumns, type ColumnConfig } from '$lib/config/columns';
 import { formatBytes, formatEta, formatSpeed } from '$lib/helpers';
 import { Check, Close, Delete, Pause, Play } from '$lib/plugins';

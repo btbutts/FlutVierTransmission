@@ -1,12 +1,12 @@
-<!-- src/lib/components/DDSelector.svelte -->
+<!-- src/lib/components/dropdowns/DDSelector.svelte -->
 <script lang="ts" generics="T = string | number">
 import { tick, type Snippet } from 'svelte';
 
+import Tooltip from '$lib/components/tooltips/Tooltip.svelte';
 import { hideCustomTooltip, showCustomTooltip } from '$lib/helpers';
 import { DDSelectorStatusIcons, type DropdownStatusIconName } from '$lib/plugins';
 
 import { createDropdown, type DropdownOption } from './dropdown.svelte.ts';
-import Tooltip from './Tooltip.svelte';
 
 interface Props {
   /** Current value (two-way bindable) */

@@ -49,7 +49,7 @@ export type {
   TorrentSessionUpdate
 } from './types';
 export type { PeersTooltipState, BandwidthPoint } from './stores';
-export type { DropdownOption } from './components/dropdown.svelte';
+export type { DropdownOption } from './components/dropdowns/dropdown.svelte.ts';
 export {
   windowPopUp,
   getCachedGeoLookup,

@@ -14,13 +14,13 @@ import {
 } from '$lib';
 
 import { loadAppState, writeAppStateBandwidth } from '$lib/appstate';
-import AddTorrentButton from '$lib/components/AddTorrentButton.svelte';
-import AddTorrentMasterModal from '$lib/components/AddTorrentMasterModal.svelte';
-import BandwidthGraph from '$lib/components/BandwidthGraph.svelte';
-import PeersTooltipPortal from '$lib/components/PeersTooltipPortal.svelte';
-import RefreshButton from '$lib/components/RefreshButton.svelte';
-import SettingsButton from '$lib/components/SettingsButton.svelte';
-import SettingsModal from '$lib/components/SettingsModal.svelte';
+import BandwidthGraph from '$lib/components/animations/BandwidthGraph.svelte';
+import AddTorrentButton from '$lib/components/buttons/AddTorrentButton.svelte';
+import RefreshButton from '$lib/components/buttons/RefreshButton.svelte';
+import SettingsButton from '$lib/components/buttons/SettingsButton.svelte';
+import AddTorrentMasterModal from '$lib/components/modals/AddTorrentMasterModal.svelte';
+import SettingsModal from '$lib/components/modals/settings/SettingsModal.svelte';
+import PeersTooltipPortal from '$lib/components/tooltips/PeersTooltipPortal.svelte';
 import { createHorizontalScrollSync } from '$lib/horizontalScrollSync.svelte';
 
 import '@fontsource-variable/inter/index.css';
