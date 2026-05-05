@@ -1,12 +1,16 @@
 <script lang="ts">
 import './+layout.css';
 
+import { browser } from '$app/environment';
 import {
+  connectPollService,
+  disconnectPollService,
   error,
   isLoading,
   performActionAndRefresh,
   refreshAll,
   selectedTorrents,
+  serverPollingAvailable,
   startPolling,
   stopPolling,
   torrents,
@@ -14,6 +18,9 @@ import {
 } from '$lib';
 
 import { loadAppState, writeAppStateBandwidth } from '$lib/appstate';
+
+// Must match useServerPollingKey in ui.svelte.
+const USE_SERVER_POLLING_KEY = 'flutvierUseServerPolling';
 import BandwidthGraph from '$lib/components/animations/BandwidthGraph.svelte';
 import AddTorrentButton from '$lib/components/buttons/AddTorrentButton.svelte';
 import RefreshButton from '$lib/components/buttons/RefreshButton.svelte';
@@ -50,28 +57,47 @@ let { children } = $props();
 const scrollSync = createHorizontalScrollSync();
 
 $effect(() => {
-  // Load server-persisted bandwidth history and geo cache on startup.
-  // Runs before the first poll so the graph can show historical data immediately.
-  loadAppState();
+  let cancelled = false;
+  let usingServerPoll = false;
 
-  // Consolidated poller: handles 1-second bandwidth/status updates and the
-  // 20-second full torrent+session refresh in a single setInterval.
-  // The first tick fires a full poll immediately so the UI is populated at startup.
+  // Always start the client-side poller immediately so the UI is populated
+  // at startup without waiting for the async server check to complete.
   startPolling();
 
-  // Persist the last five minutes of bandwidth history to disk every 60s.
+  // Load server-persisted state (bandwidth history, geo cache, poll-status).
+  // Once resolved, switch to server-side polling if the user has enabled it
+  // and the PollService agent is running.
+  void loadAppState().then(() => {
+    if (cancelled) return;
+    const useServerPoll =
+      $serverPollingAvailable &&
+      browser &&
+      localStorage.getItem(USE_SERVER_POLLING_KEY) === 'true';
+
+    if (useServerPoll) {
+      stopPolling();
+      connectPollService();
+      usingServerPoll = true;
+    }
+  });
+
+  // Persist the last five minutes of bandwidth history to disk every 60 s.
   const bwWriteInterval = setInterval(writeAppStateBandwidth, 60000);
 
   // Final write on page close / refresh. keepalive:true tells the browser to
-  // deliver the request even as the page is tearing down, eliminating the data
-  // gap that would otherwise exist between the last periodic write and now.
+  // deliver the request even as the page is tearing down.
   function handleBeforeUnload() {
     writeAppStateBandwidth(true);
   }
   window.addEventListener('beforeunload', handleBeforeUnload);
 
   return () => {
-    stopPolling();
+    cancelled = true;
+    if (usingServerPoll) {
+      disconnectPollService();
+    } else {
+      stopPolling();
+    }
     clearInterval(bwWriteInterval);
     window.removeEventListener('beforeunload', handleBeforeUnload);
   };

@@ -2,7 +2,9 @@
 // It can be imported by any other module in the project without creating circular dependencies.
 // src/lib/helpers.ts
 
+import { get } from 'svelte/store';
 import { writeAppStateGeoEntry } from './appstate';
+import { serverPollingAvailable } from './stores';
 import type { GeoInfo, ShowCustomTooltipOptions, Torrent } from './types';
 
 /**
@@ -141,10 +143,35 @@ export function setCachedGeoLookup(ip: string, info: GeoInfo) {
 // Uses ip-api.com for free IP geolocation — no API key required,
 // but rate-limited to 45 req/min per IP. Caching is essential
 // to avoid hitting limits and ensure responsive tooltips.
+//
+// When the PollService is available (serverPollingAvailable), the lookup is
+// delegated to POST /api/ipgeoinfo on the companion server. This moves the
+// ip-api rate limit management server-side, shared across all browser tabs
+// and clients. The frontend remains unaware of the DB backing that endpoint.
 export async function ipGeoLookup(ip: string): Promise<GeoInfo | null> {
   const cached = getCachedGeoLookup(ip);
   if (cached) return cached;
+
   try {
+    if (get(serverPollingAvailable)) {
+      // PollService mode: delegate to the companion server which has a DB-backed
+      // 48-hour geo cache and manages the ip-api rate limit server-side.
+      const res = await fetch('/api/ipgeoinfo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ips: [ip] })
+      });
+      if (res.ok) {
+        const data = (await res.json()) as Record<string, GeoInfo>;
+        if (data[ip]) {
+          setCachedGeoLookup(ip, data[ip]);
+          return data[ip];
+        }
+      }
+      return null;
+    }
+
+    // SPA mode (Mode A): call ip-api directly from the browser.
     const res = await fetch(`http://ip-api.com/json/${ip}`);
     if (!res.ok) return null;
     const json = await res.json();

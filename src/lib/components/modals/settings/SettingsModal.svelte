@@ -58,6 +58,10 @@ let commonPaths = $state<string[]>([]);
 const bwServerPrefKey = 'flutvierStoreBandwidthOnServer';
 let storeBandwidthOnServer = $state(false);
 
+// Must match USE_SERVER_POLLING_KEY in +layout.svelte.
+const useServerPollingKey = 'flutvierUseServerPolling';
+let useServerPolling = $state(false);
+
 // ── Alt speed schedule state (used by saveSettings & syncAltSpeedTimes) ───────
 let altSpeedFrom = $state('09:00');
 let altSpeedTo = $state('17:00');
@@ -108,6 +112,7 @@ async function saveSettings() {
       window.localStorage.setItem(themePreferenceKey, themePreference);
       window.localStorage.setItem(commonPathsKey, JSON.stringify(commonPaths));
       window.localStorage.setItem(bwServerPrefKey, String(storeBandwidthOnServer));
+      window.localStorage.setItem(useServerPollingKey, String(useServerPolling));
     }
     saveStatus = 'success';
   } catch {
@@ -143,6 +148,9 @@ function handleClosed() {
 
     const storedBwServer = window.localStorage.getItem(bwServerPrefKey);
     storeBandwidthOnServer = storedBwServer === 'true';
+
+    const storedServerPoll = window.localStorage.getItem(useServerPollingKey);
+    useServerPolling = storedServerPoll === 'true';
   }
 }
 
@@ -192,6 +200,11 @@ onMount(() => {
   const storedBwServer = window.localStorage.getItem(bwServerPrefKey);
   if (storedBwServer !== null) {
     storeBandwidthOnServer = storedBwServer === 'true';
+  }
+
+  const storedServerPoll = window.localStorage.getItem(useServerPollingKey);
+  if (storedServerPoll !== null) {
+    useServerPolling = storedServerPoll === 'true';
   }
 });
 </script>
@@ -254,7 +267,7 @@ onMount(() => {
         {:else if activeTab === 'disk'}
           <DiskTab bind:tempSettings />
         {:else if activeTab === 'ui'}
-          <UiTab bind:storeBandwidthOnServer />
+          <UiTab bind:storeBandwidthOnServer bind:useServerPolling />
         {/if}
       </div>
 

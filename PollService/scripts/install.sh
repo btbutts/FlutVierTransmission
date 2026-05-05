@@ -18,7 +18,7 @@ set -euo pipefail
 # ── Configuration ─────────────────────────────────────────────────────────────
 
 INSTALL_DIR="/opt/flutvier"
-SERVICE_NAME="flutviercompanion"
+SERVICE_NAME="FlutVierCompanion"
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
 SERVICE_USER="www-data"
 PORT="19091"
@@ -56,7 +56,10 @@ echo ""
 install_node() {
   echo "Installing Node.js ${NODE_MAJOR}.x LTS via NodeSource..."
   apt-get update -qq
-  apt-get install -y -qq curl ca-certificates gnupg
+  # build-essential and python3-dev are required by node-gyp to compile
+  # better-sqlite3's native addon. On Node 22 with prebuilt binaries this is
+  # typically a no-op, but the tools must be present as a fallback.
+  apt-get install -y -qq curl ca-certificates gnupg build-essential python3-dev
   curl -fsSL "https://deb.nodesource.com/setup_${NODE_MAJOR}.x" | bash - >/dev/null
   apt-get install -y -qq nodejs
   echo "Node.js $(node --version) installed."
@@ -123,6 +126,12 @@ ExecStart=/usr/bin/node ${INSTALL_DIR}/pollservice/index.js
 Environment=PORT=${PORT}
 Environment=POLLSERVICE_BUILD_DIR=${INSTALL_DIR}/spa
 Environment=POLLSERVICE_DATA_DIR=${INSTALL_DIR}/data
+Environment=POLLSERVICE_MIGRATIONS_DIR=${INSTALL_DIR}/pollservice/drizzle
+Environment=TRANSMISSION_URL=http://localhost:9091/transmission/rpc
+Environment=POLLSERVICE_POLL_INTERVAL_MS=1000
+# Uncomment and fill in the lines below if Transmission RPC requires HTTP Basic Auth:
+# Environment=TRANSMISSION_USERNAME=your-username
+# Environment=TRANSMISSION_PASSWORD=your-password
 Restart=on-failure
 RestartSec=5
 StandardOutput=journal

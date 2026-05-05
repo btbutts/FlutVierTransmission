@@ -1,7 +1,7 @@
 <!-- src/lib/components/modals/settings/tabs/ui.svelte -->
 <script lang="ts">
 import { browser } from '$app/environment';
-import { detectServer, serverAvailable } from '$lib';
+import { detectPollServiceHost, serverAvailable, serverPollingAvailable } from '$lib';
 
 import LoadingArcSpinner from '$lib/components/animations/LoadingArcSpinner.svelte';
 import RefreshSpinner from '$lib/components/animations/RefreshSpinner.svelte';
@@ -12,9 +12,10 @@ import { Check, ContentCopy, Download, InformationVariantCircleOutline } from '$
 
 interface Props {
   storeBandwidthOnServer: boolean;
+  useServerPolling: boolean;
 }
 
-let { storeBandwidthOnServer = $bindable() }: Props = $props();
+let { storeBandwidthOnServer = $bindable(), useServerPolling = $bindable() }: Props = $props();
 
 // ── Bandwidth storage tooltip ─────────────────────────────────────────────────
 // The animated modal panel has backdrop-blur-xl, which creates a new CSS
@@ -52,7 +53,7 @@ $effect(() => {
 
 async function checkForPollService() {
   pollCheckLoading = true;
-  await detectServer();
+  await detectPollServiceHost();
   // If the server still isn't available, (re-)fetch the release info so the user
   // can try downloading the installer without a full page reload.
   if (!$serverAvailable) {
@@ -165,15 +166,26 @@ async function copyOneliner() {
             </ul>
           </Tooltip>
         </div>
-        <!-- Use server-side polling (Phase 4 placeholder — not yet functional) -->
+        <!-- Use server-side polling — enabled only when the PollService agent is running -->
         <div class="flex items-center gap-3">
-          <label class="flex cursor-not-allowed items-center gap-3 opacity-50">
-            <input type="checkbox" disabled class="h-4 w-4 rounded border-gray-300" />
+          <label
+            class="flex items-center gap-3 {$serverPollingAvailable
+              ? ''
+              : 'cursor-not-allowed opacity-50'}"
+          >
+            <input
+              type="checkbox"
+              checked={useServerPolling}
+              disabled={!$serverPollingAvailable}
+              onchange={(e) => {
+                useServerPolling = (e.currentTarget as HTMLInputElement).checked;
+              }}
+              class="text-ColorPalette-modal-TxtAccent-secondary h-4 w-4 rounded border-gray-300 focus:ring-blue-500 focus:outline-none"
+            />
             <span class="text-ColorPalette-text-secondary text-sm font-medium"
               >Use server-side polling</span
             >
           </label>
-          <span class="text-ColorPalette-text-tertiary text-xs italic">coming soon</span>
         </div>
       </div>
     {:else}

@@ -18,17 +18,43 @@ import { FULL_INFO_FIELDS, QUICK_STATS_FIELDS, transmissionDataStore } from './d
 let intervalId: ReturnType<typeof setInterval> | null = null;
 let tickCount = 0;
 
+// Tracks torrent IDs that had zero UL+DL on the previous tick. Used to detect
+// when an idle torrent becomes active mid-cycle and immediately push the new
+// rates to the table without waiting for the next 7-tick display cadence.
+const prevInactiveIds = new Set<number>();
+
+// Pushes `list` to tableDisplayTorrents when the 7-tick cadence fires OR when
+// any previously-inactive torrent has started transferring. After pushing,
+// rebuilds prevInactiveIds from the current list for use on the next tick.
+function maybeUpdateTableDisplay(list: Torrent[], isTableDisplayTick: boolean): void {
+  const newlyActive = list.some(
+    (t) => prevInactiveIds.has(t.id) && ((t.rateDownload ?? 0) > 0 || (t.rateUpload ?? 0) > 0)
+  );
+  if (newlyActive || isTableDisplayTick) {
+    tableDisplayTorrents.set(list);
+  }
+  prevInactiveIds.clear();
+  for (const t of list) {
+    if ((t.rateDownload ?? 0) === 0 && (t.rateUpload ?? 0) === 0) {
+      prevInactiveIds.add(t.id);
+    }
+  }
+}
+
 export function startPolling(): void {
   if (intervalId) return;
 
   tickCount = 0;
+  prevInactiveIds.clear();
 
   intervalId = setInterval(async () => {
     tickCount++;
     const isFullPollTick = tickCount === 1 || tickCount % 20 === 0;
-    // Table display refreshes every 15 s so that sorting by UL/DL doesn't
+    // Table display refreshes every 7 s so that sorting by UL/DL doesn't
     // reorder rows every second. Also fires on tick 1 to populate on startup.
-    const isTableDisplayTick = tickCount === 1 || tickCount % 15 === 0;
+    // An immediate push also occurs when a previously-idle torrent goes active
+    // (see maybeUpdateTableDisplay).
+    const isTableDisplayTick = tickCount === 1 || tickCount % 7 === 0;
 
     try {
       if (isFullPollTick) {
@@ -61,7 +87,7 @@ export function startPolling(): void {
         transmissionDataStore.updateTorrentInfoFull(fullTorrents, sessionInfoResponse);
         const fullList = transmissionDataStore.getAll().torrents;
         torrents.set(fullList);
-        if (isTableDisplayTick) tableDisplayTorrents.set(fullList);
+        maybeUpdateTableDisplay(fullList, isTableDisplayTick);
         if (sessionInfoResponse) {
           session.set(sessionInfoResponse as Record<string, unknown>);
         }
@@ -89,7 +115,7 @@ export function startPolling(): void {
         transmissionDataStore.updateTorrentQuickStats(quickStatsTorrents);
         const lightList = transmissionDataStore.getAll().torrents;
         torrents.set(lightList);
-        if (isTableDisplayTick) tableDisplayTorrents.set(lightList);
+        maybeUpdateTableDisplay(lightList, isTableDisplayTick);
       }
     } catch (err) {
       console.error('Transmission poll failed:', err);
@@ -102,5 +128,6 @@ export function stopPolling(): void {
     clearInterval(intervalId);
     intervalId = null;
     tickCount = 0;
+    prevInactiveIds.clear();
   }
 }

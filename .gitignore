@@ -3,6 +3,9 @@ node_modules
 # Server-side runtime data (bandwidth history, geo cache, future user settings)
 /data
 
+# PollService runtime data (appstate.json, pollservice.db)
+PollService/data/
+
 
 .output
 .vercel

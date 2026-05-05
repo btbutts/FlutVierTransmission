@@ -1,10 +1,11 @@
 // place files you want to import through the `$lib` alias in this folder.
 // src/lib/index.ts
-export { detectServer, loadAppState, writeAppStateBandwidth } from './appstate';
+export { detectPollServiceHost, loadAppState, writeAppStateBandwidth } from './appstate';
 export { transmissionCallRPC, ensureSessionId } from './rpc';
 export type { RpcRequest, RpcResponse } from './rpc';
 export { transmissionDataStore } from './PollAgent/db';
 export { startPolling, stopPolling } from './PollAgent/poller';
+export { connectPollService, disconnectPollService } from './PollAgent/pollServiceConnector';
 export {
   refreshAll,
   selectedTorrents,
@@ -38,7 +39,8 @@ export {
   bandwidthHistory,
   bandwidthLastPollTime,
   liveBandwidthRates,
-  serverAvailable
+  serverAvailable,
+  serverPollingAvailable
 } from './stores';
 export type {
   Torrent,

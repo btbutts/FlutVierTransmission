@@ -4,7 +4,7 @@
 
 import { get } from 'svelte/store';
 
-import { bandwidthHistory, serverAvailable, type BandwidthPoint } from './stores';
+import { bandwidthHistory, serverAvailable, serverPollingAvailable, type BandwidthPoint } from './stores';
 import type { GeoInfo } from './types';
 
 // Must match CACHE_KEY in helpers.ts. Not imported from there to avoid a circular dependency
@@ -39,12 +39,28 @@ function isBandwidthServerEnabled(): boolean {
  * does not load or merge any persisted data — it is a lightweight re-check
  * intended for use after the user installs the companion without refreshing the page.
  */
-export async function detectServer(): Promise<void> {
+export async function detectPollServiceHost(): Promise<void> {
   try {
     const res = await fetch('/api/appstate');
     serverAvailable.set(res.ok);
+    if (res.ok) {
+      try {
+        const pollRes = await fetch('/api/poll-status');
+        if (pollRes.ok) {
+          const status = (await pollRes.json()) as { running?: boolean };
+          serverPollingAvailable.set(status.running === true);
+        } else {
+          serverPollingAvailable.set(false);
+        }
+      } catch {
+        serverPollingAvailable.set(false);
+      }
+    } else {
+      serverPollingAvailable.set(false);
+    }
   } catch {
     serverAvailable.set(false);
+    serverPollingAvailable.set(false);
   }
 }
 
@@ -65,9 +81,23 @@ export async function loadAppState(): Promise<void> {
     const res = await fetch('/api/appstate');
     if (!res.ok) {
       serverAvailable.set(false);
+      serverPollingAvailable.set(false);
       return;
     }
     serverAvailable.set(true);
+
+    // Check whether the server-side polling agent is running.
+    try {
+      const pollRes = await fetch('/api/poll-status');
+      if (pollRes.ok) {
+        const status = (await pollRes.json()) as { running?: boolean };
+        serverPollingAvailable.set(status.running === true);
+      } else {
+        serverPollingAvailable.set(false);
+      }
+    } catch {
+      serverPollingAvailable.set(false);
+    }
 
     const state = (await res.json()) as {
       bandwidth?: BandwidthPoint[];
@@ -134,6 +164,7 @@ export async function loadAppState(): Promise<void> {
     }
   } catch {
     serverAvailable.set(false);
+    serverPollingAvailable.set(false);
     // Server unreachable or returned malformed JSON — the app works fine without persistence.
   }
 }

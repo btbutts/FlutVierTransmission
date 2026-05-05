@@ -360,3 +360,10 @@ export const liveBandwidthRates = writable<{ download: number; upload: number }>
  * Components gate server-only settings UI on this store.
  */
 export const serverAvailable = writable<boolean>(false);
+
+/**
+ * True when the PollService companion is both reachable AND its internal
+ * polling agent is actively running (GET /api/poll-status returns running:true).
+ * Defaults false. Gates the "Use server-side polling" setting in the UI.
+ */
+export const serverPollingAvailable = writable<boolean>(false);
