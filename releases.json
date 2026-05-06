@@ -1,13 +1,26 @@
 {
-  "pollservice": {
-    "version": "0.0.0",
-    "tag": "pollservice-v0.0.0",
-    "installerUrl": "",
-    "zipUrl": ""
+  "repo": "btbutts/FlutVierTransmission",
+  "PollService": {
+    "latest": "0.1.0",
+    "installerUrl": "https://raw.githubusercontent.com/btbutts/FlutVierTransmission/master/PollService/scripts/install.sh",
+    "releases": [
+      {
+        "version": "0.1.0",
+        "tag": "PollService-v0.1.0",
+        "filename": "flutvier-pollservice-v0.1.0.zip",
+        "zipUrl": ""
+      }
+    ]
   },
-  "spa": {
-    "version": "0.0.0",
-    "tag": "spa-v0.0.0",
-    "downloadUrl": ""
+  "web-frontend": {
+    "latest": "0.1.0",
+    "releases": [
+      {
+        "version": "0.1.0",
+        "tag": "web-frontend-v0.1.0",
+        "filename": "flutvier-web-frontend-v0.1.0.zip",
+        "downloadUrl": ""
+      }
+    ]
   }
 }

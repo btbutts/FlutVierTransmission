@@ -1,0 +1,4 @@
+# Zip archives are local staging artifacts only.
+# They are uploaded to GitHub Releases by npm run publish:release
+# and are never committed to the repository.
+*.zip

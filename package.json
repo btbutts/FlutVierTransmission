@@ -1,13 +1,16 @@
 {
 	"name": "flutviertransmission-ts",
 	"private": true,
-	"version": "0.0.1",
+	"version": "0.1.0",
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev",
 		"build": "vite build",
 		"build:pollservice": "cd PollService && npm install --silent && npm run build",
 		"build:all": "npm run build && npm run build:pollservice",
+		"build:release": "node scripts/build.mjs",
+		"publish:release": "node scripts/publish.mjs",
+		"bump": "node scripts/bump-version.mjs",
 		"dev:pollservice": "cd PollService && npm run dev",
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
