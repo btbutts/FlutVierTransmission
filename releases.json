@@ -8,7 +8,7 @@
         "version": "0.1.0",
         "tag": "PollService-v0.1.0",
         "filename": "flutvier-pollservice-v0.1.0.zip",
-        "zipUrl": ""
+        "zipUrl": "https://github.com/btbutts/FlutVierTransmission/releases/download/PollService-v0.1.0/flutvier-pollservice-v0.1.0.zip"
       }
     ]
   },
@@ -19,7 +19,7 @@
         "version": "0.1.0",
         "tag": "web-frontend-v0.1.0",
         "filename": "flutvier-web-frontend-v0.1.0.zip",
-        "downloadUrl": ""
+        "downloadUrl": "https://github.com/btbutts/FlutVierTransmission/releases/download/web-frontend-v0.1.0/flutvier-web-frontend-v0.1.0.zip"
       }
     ]
   }
