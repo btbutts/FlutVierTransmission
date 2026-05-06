@@ -101,7 +101,7 @@ fi
 # ── Create install directories ────────────────────────────────────────────────
 
 echo "Creating installation directories in ${INSTALL_DIR}..."
-mkdir -p "${INSTALL_DIR}/spa" "${INSTALL_DIR}/pollservice" "${INSTALL_DIR}/data"
+mkdir -p "${INSTALL_DIR}/web-frontend" "${INSTALL_DIR}/pollservice" "${INSTALL_DIR}/data"
 
 # ── Download release archives ─────────────────────────────────────────────────
 
@@ -163,9 +163,9 @@ rm /tmp/flutvier-pollservice.zip
 
 echo "Downloading web frontend archive (v${WF_VERSION})..."
 curl -fsSL "${FRONTEND_ZIP_URL}" -o /tmp/flutvier-web-frontend.zip
-rm -rf "${INSTALL_DIR}/spa"
-mkdir -p "${INSTALL_DIR}/spa"
-unzip -q /tmp/flutvier-web-frontend.zip -d "${INSTALL_DIR}/spa"
+rm -rf "${INSTALL_DIR}/web-frontend"
+mkdir -p "${INSTALL_DIR}/web-frontend"
+unzip -q /tmp/flutvier-web-frontend.zip -d "${INSTALL_DIR}/web-frontend"
 rm /tmp/flutvier-web-frontend.zip
 
 # ── Install production Node.js dependencies ───────────────────────────────────
@@ -193,7 +193,7 @@ User=${SERVICE_USER}
 WorkingDirectory=${INSTALL_DIR}
 ExecStart=/usr/bin/node ${INSTALL_DIR}/pollservice/index.js
 Environment=PORT=${PORT}
-Environment=POLLSERVICE_BUILD_DIR=${INSTALL_DIR}/spa
+Environment=POLLSERVICE_BUILD_DIR=${INSTALL_DIR}/web-frontend
 Environment=POLLSERVICE_DATA_DIR=${INSTALL_DIR}/data
 Environment=POLLSERVICE_MIGRATIONS_DIR=${INSTALL_DIR}/pollservice/drizzle
 Environment=TRANSMISSION_URL=http://localhost:9091/transmission/rpc

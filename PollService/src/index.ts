@@ -2,14 +2,14 @@
 // Entry point for the FlutVier PollService companion server.
 //
 // Responsibilities:
-//   - Serves the SPA static files from dist/spa/ (same build output used in Mode A)
+//   - Serves the web-frontend static files from dist/web-frontend/ (same build output used in Mode A)
 //   - Provides /api/appstate persistence (bandwidth history + geo cache)
 //   - Provides /api/torrents, /api/session, /api/poll-status (Phase 4 polling agent)
 //   - Serves 200.html as SPA fallback for all unmatched GET requests
 //
 // Environment variables:
 //   PORT                         — listening port (default: 19091)
-//   POLLSERVICE_BUILD_DIR        — path to SPA static files (default: ../spa relative to this file)
+//   POLLSERVICE_BUILD_DIR        — path to web-frontend static files (default: ../web-frontend relative to this file)
 //   POLLSERVICE_DATA_DIR         — path to data directory   (default: ../data relative to this file)
 //   TRANSMISSION_URL             — Transmission RPC URL (default: http://localhost:9091/transmission/rpc)
 //   POLLSERVICE_POLL_INTERVAL_MS — polling tick interval in ms (default: 1000)
@@ -39,9 +39,9 @@ import type { AppState } from './types.js';
 dotenv.config({ path: resolve(import.meta.dirname, '../../.env') });
 
 // Resolve paths relative to the compiled output location.
-//   Development (npm run build:pollservice):  dist/pollservice/ → dist/spa/, dist/data/
-//   Deployed (/opt/flutvier/pollservice/):    /opt/flutvier/pollservice/ → /opt/flutvier/spa/, /opt/flutvier/data/
-const BUILD_DIR = process.env.POLLSERVICE_BUILD_DIR ?? resolve(import.meta.dirname, '../spa');
+//   Development (npm run build:pollservice):  dist/pollservice/ → dist/web-frontend/, dist/data/
+//   Deployed (/opt/flutvier/pollservice/):    /opt/flutvier/pollservice/ → /opt/flutvier/web-frontend/, /opt/flutvier/data/
+const BUILD_DIR = process.env.POLLSERVICE_BUILD_DIR ?? resolve(import.meta.dirname, '../web-frontend');
 const DATA_DIR = process.env.POLLSERVICE_DATA_DIR ?? resolve(import.meta.dirname, '../data');
 const PORT = Number(process.env.PORT ?? 19091);
 

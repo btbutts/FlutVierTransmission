@@ -8,13 +8,15 @@ import FlyStretchAnimationWrapper from '$lib/components/animations/FlyStretchAni
 import SaveButton from '$lib/components/buttons/SaveButton.svelte';
 import { Close } from '$lib/plugins';
 
-import DiskTab from './tabs/disk.svelte';
-import GeneralTab from './tabs/general.svelte';
-import PortsTab from './tabs/ports.svelte';
-import QueueTab from './tabs/queue.svelte';
-import RemoteTab from './tabs/remote.svelte';
-import SpeedsTab from './tabs/speeds.svelte';
-import UiTab from './tabs/ui.svelte';
+// Tab components are only rendered when the settings modal is open, so load
+// them lazily to keep them out of the initial layout bundle.
+const DiskTabPromise = import('./tabs/disk.svelte');
+const GeneralTabPromise = import('./tabs/general.svelte');
+const PortsTabPromise = import('./tabs/ports.svelte');
+const QueueTabPromise = import('./tabs/queue.svelte');
+const RemoteTabPromise = import('./tabs/remote.svelte');
+const SpeedsTabPromise = import('./tabs/speeds.svelte');
+const UiTabPromise = import('./tabs/ui.svelte');
 
 interface Props {
   /** Controls modal visibility — bindable so parent can open/close */
@@ -255,19 +257,33 @@ onMount(() => {
       <!-- Scrollable Content -->
       <div class="min-h-0 flex-1 overflow-y-auto p-6">
         {#if activeTab === 'general'}
-          <GeneralTab bind:tempSettings bind:themePreference {themeOptions} bind:commonPaths />
+          {#await GeneralTabPromise then { default: GeneralTab }}
+            <GeneralTab bind:tempSettings bind:themePreference {themeOptions} bind:commonPaths />
+          {/await}
         {:else if activeTab === 'speeds'}
-          <SpeedsTab bind:tempSettings bind:altSpeedFrom bind:altSpeedTo />
+          {#await SpeedsTabPromise then { default: SpeedsTab }}
+            <SpeedsTab bind:tempSettings bind:altSpeedFrom bind:altSpeedTo />
+          {/await}
         {:else if activeTab === 'queue'}
-          <QueueTab bind:tempSettings />
+          {#await QueueTabPromise then { default: QueueTab }}
+            <QueueTab bind:tempSettings />
+          {/await}
         {:else if activeTab === 'ports'}
-          <PortsTab bind:tempSettings />
+          {#await PortsTabPromise then { default: PortsTab }}
+            <PortsTab bind:tempSettings />
+          {/await}
         {:else if activeTab === 'remote'}
-          <RemoteTab bind:tempSettings />
+          {#await RemoteTabPromise then { default: RemoteTab }}
+            <RemoteTab bind:tempSettings />
+          {/await}
         {:else if activeTab === 'disk'}
-          <DiskTab bind:tempSettings />
+          {#await DiskTabPromise then { default: DiskTab }}
+            <DiskTab bind:tempSettings />
+          {/await}
         {:else if activeTab === 'ui'}
-          <UiTab bind:storeBandwidthOnServer bind:useServerPolling />
+          {#await UiTabPromise then { default: UiTab }}
+            <UiTab bind:storeBandwidthOnServer bind:useServerPolling />
+          {/await}
         {/if}
       </div>
 

@@ -133,12 +133,12 @@ body {
   padding: 0;
 }
 
-:global(input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-visible) {
+:global(input:focus-visible textarea:focus-visible select:focus-visible button:focus-visible) {
   outline: none;
   outline-offset: 0;
 }
 
-:global(input:focus-visible, textarea:focus-visible, select:focus-visible) {
+:global(input:focus-visible textarea:focus-visible select:focus-visible) {
   border-color: var(--color-ColorPalette-input-ring-focus-primary);
 }
 

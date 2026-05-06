@@ -16,9 +16,9 @@ const config = {
 	kit: {
 		// SPA mode: all pages are client-rendered; the static adapter pre-builds the shell
 		// and writes a 200.html fallback so deep-link refreshes resolve to the app.
-		// Output goes to dist/spa/ so it stays separate from the PollService build output
+		// Output goes to dist/web-frontend/ so it stays separate from the PollService build output
 		// (dist/pollservice/). Both are gitignored under dist/.
-		adapter: adapterStatic({ fallback: '200.html', pages: 'dist/spa', assets: 'dist/spa' })
+		adapter: adapterStatic({ fallback: '200.html', pages: 'dist/web-frontend', assets: 'dist/web-frontend' })
 	}
 };
 

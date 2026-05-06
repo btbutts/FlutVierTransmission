@@ -85,14 +85,14 @@ npm run build:all
 
 Runs both builds in sequence:
 
-1. `vite build` — compiles the web-frontend SvelteKit SPA to `dist/spa/`
+1. `vite build` — compiles the web-frontend SvelteKit SPA to `dist/web-frontend/`
 2. `tsc` — compiles PollService TypeScript to `dist/pollservice/`, then
    copies `package.json` and `drizzle/` migrations alongside the output JS
 
 To compile only one package:
 
 ```bash
-npm run build                  # web-frontend only  →  dist/spa/
+npm run build                  # web-frontend only  →  dist/web-frontend/
 npm run build:pollservice      # PollService only   →  dist/pollservice/
 ```
 
@@ -155,8 +155,8 @@ This command:
 
 1. Regenerates `PollService/scripts/install.sh` from the template, substituting
    `NODE_MAJOR` from `PollService/package.json` and `REPO` from `releases.json`
-2. Compiles the web-frontend → `dist/spa/`
-3. Zips `dist/spa/` → `releases/web-frontend/flutvier-web-frontend-v{ver}.zip`
+2. Compiles the web-frontend → `dist/web-frontend/`
+3. Zips `dist/web-frontend/` → `releases/web-frontend/flutvier-web-frontend-v{ver}.zip`
 4. Compiles PollService → `dist/pollservice/`
 5. Zips `dist/pollservice/` → `releases/pollservice/flutvier-pollservice-v{ver}.zip`
 

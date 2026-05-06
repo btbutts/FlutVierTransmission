@@ -63,13 +63,13 @@ if (buildWebFrontend) {
   const filename = `flutvier-web-frontend-v${version}.zip`;
   const releaseDir = resolve(REPO_ROOT, 'releases', 'web-frontend');
   const zipPath = resolve(releaseDir, filename);
-  const distDir = resolve(REPO_ROOT, 'dist', 'spa');
+  const distDir = resolve(REPO_ROOT, 'dist', 'web-frontend');
 
   console.log(`\n[build] Step 2 — Building web-frontend v${version}...`);
   run('npm run build');
 
   if (!existsSync(distDir)) {
-    console.error(`[build] Error: expected dist/spa/ after vite build but it was not found.`);
+    console.error(`[build] Error: expected dist/web-frontend/ after vite build but it was not found.`);
     process.exit(1);
   }
 
