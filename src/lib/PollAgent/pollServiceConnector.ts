@@ -20,6 +20,7 @@
 // prevent sort-by-UL/DL reordering the table every second. An immediate push
 // also fires when a previously-inactive torrent starts transferring.
 
+import { getCompanionBase } from '../appstate';
 import {
   bandwidthHistory,
   bandwidthLastPollTime,
@@ -152,7 +153,8 @@ async function consumeSSEStream(body: ReadableStream<Uint8Array>): Promise<void>
 
 async function doInitialFetch(): Promise<boolean> {
   try {
-    const torrentRes = await fetch('/api/torrents');
+    const base = await getCompanionBase();
+    const torrentRes = await fetch(`${base}/api/torrents`);
 
     if (torrentRes.status === 304) {
       // Data unchanged — the server's ETag matched the browser's cached copy.
@@ -173,7 +175,7 @@ async function doInitialFetch(): Promise<boolean> {
     // Parse torrents and fetch session in parallel now that we know torrents is fresh.
     const [freshTorrents, sessionRes] = await Promise.all([
       torrentRes.json() as Promise<Torrent[]>,
-      fetch('/api/session')
+      fetch(`${base}/api/session`)
     ]);
 
     if (!sessionRes.ok) return false;
@@ -209,7 +211,8 @@ async function openSSE(): Promise<void> {
   sseAbortController = new AbortController();
 
   try {
-    const res = await fetch('/api/torrents', {
+    const base = await getCompanionBase();
+    const res = await fetch(`${base}/api/torrents`, {
       headers: { Accept: 'text/event-stream' },
       signal: sseAbortController.signal
     });

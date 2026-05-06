@@ -7,6 +7,67 @@ import { get } from 'svelte/store';
 import { bandwidthHistory, serverAvailable, serverPollingAvailable, type BandwidthPoint } from './stores';
 import type { GeoInfo } from './types';
 
+// ── Companion base URL discovery ───────────────────────────────────────────────
+//
+// The PollService companion is almost never on the same origin as the page.
+// (Transmission's built-in web server hosts the frontend on port 9091, but the
+// companion runs on a different port.)  We resolve the companion's base URL via
+// a three-step sequence on first use, then cache it for the session.
+//
+//   Step 1 — same-origin probe: GET /api/config with a 3-second timeout.
+//            Succeeds when the companion itself is serving the frontend (e.g. the
+//            user is connecting directly to port 19091).
+//
+//   Step 2 — POJO config file: read window.POLL_SERVICE_COMPANION_CONFIG.companionPort
+//            written by install.sh into static/pollServiceCompanionConfig/pollServiceConf_001.js
+//            and injected via <script src> in app.html before any framework code.
+//            companionPort === 0 means the companion is not installed here; skip.
+//
+//   Step 3 — port-offset heuristic: companion port = current page port + 10000.
+//            (Transmission default 9091 → companion 19091.)  If the result exceeds
+//            65535, fall back to probing port 19091 directly.
+//
+// The resolved base URL is cached in _companionBase for the lifetime of the page.
+// An empty string means discovery is still pending or has not been attempted.
+
+let _discoveryPromise: Promise<string> | null = null;
+
+async function discoverCompanionBase(): Promise<string> {
+  // Step 1: same-origin probe.
+  try {
+    const res = await fetch('/api/config', { signal: AbortSignal.timeout(3000) });
+    if (res.ok) {
+      return ''; // companion is same-origin; relative URLs work as-is
+    }
+  } catch {
+    // not same-origin or timed out — continue
+  }
+
+  // Step 2: POJO config file.
+  const configuredPort = window.POLL_SERVICE_COMPANION_CONFIG?.companionPort ?? 0;
+  if (configuredPort > 0 && configuredPort <= 65535) {
+    return `${window.location.protocol}//${window.location.hostname}:${configuredPort}`;
+  }
+
+  // Step 3: port-offset heuristic.
+  const currentPort = parseInt(window.location.port, 10) || (window.location.protocol === 'https:' ? 443 : 80);
+  const offsetPort = currentPort + 10000;
+  const companionPort = offsetPort <= 65535 ? offsetPort : 19091;
+  return `${window.location.protocol}//${window.location.hostname}:${companionPort}`;
+}
+
+/**
+ * Returns the companion's base URL (e.g. "http://192.168.1.10:19091") or an
+ * empty string when the companion is on the same origin.  Runs discovery at
+ * most once per page load and caches the result.
+ */
+export function getCompanionBase(): Promise<string> {
+  if (!_discoveryPromise) {
+    _discoveryPromise = discoverCompanionBase();
+  }
+  return _discoveryPromise;
+}
+
 // Must match CACHE_KEY in helpers.ts. Not imported from there to avoid a circular dependency
 // (helpers.ts imports writeAppStateGeoEntry from this module).
 const GEO_CACHE_KEY = 'ip_geo_cache';
@@ -41,11 +102,12 @@ function isBandwidthServerEnabled(): boolean {
  */
 export async function detectPollServiceHost(): Promise<void> {
   try {
-    const res = await fetch('/api/appstate');
+    const base = await getCompanionBase();
+    const res = await fetch(`${base}/api/appstate`);
     serverAvailable.set(res.ok);
     if (res.ok) {
       try {
-        const pollRes = await fetch('/api/poll-status');
+        const pollRes = await fetch(`${base}/api/poll-status`);
         if (pollRes.ok) {
           const status = (await pollRes.json()) as { running?: boolean };
           serverPollingAvailable.set(status.running === true);
@@ -78,7 +140,8 @@ export async function detectPollServiceHost(): Promise<void> {
  */
 export async function loadAppState(): Promise<void> {
   try {
-    const res = await fetch('/api/appstate');
+    const base = await getCompanionBase();
+    const res = await fetch(`${base}/api/appstate`);
     if (!res.ok) {
       serverAvailable.set(false);
       serverPollingAvailable.set(false);
@@ -88,7 +151,7 @@ export async function loadAppState(): Promise<void> {
 
     // Check whether the server-side polling agent is running.
     try {
-      const pollRes = await fetch('/api/poll-status');
+      const pollRes = await fetch(`${base}/api/poll-status`);
       if (pollRes.ok) {
         const status = (await pollRes.json()) as { running?: boolean };
         serverPollingAvailable.set(status.running === true);
@@ -189,7 +252,8 @@ export async function writeAppStateBandwidth(keepalive = false): Promise<void> {
   const points = get(bandwidthHistory).slice(-limit);
   if (!points.length) return;
   try {
-    await fetch('/api/appstate', {
+    const base = await getCompanionBase();
+    await fetch(`${base}/api/appstate`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ bandwidth: points }),
@@ -210,7 +274,8 @@ export async function writeAppStateBandwidth(keepalive = false): Promise<void> {
 export async function writeAppStateGeoEntry(ip: string, info: GeoInfo): Promise<void> {
   if (!get(serverAvailable)) return;
   try {
-    await fetch('/api/appstate', {
+    const base = await getCompanionBase();
+    await fetch(`${base}/api/appstate`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ geoCache: { [ip]: info } })

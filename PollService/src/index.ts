@@ -75,7 +75,32 @@ if (process.env.NODE_ENV === 'development') {
 // Registered before API routes so requests for static assets are resolved first.
 app.use(express.static(BUILD_DIR));
 
+// ── CORS for /api/* ───────────────────────────────────────────────────────────
+// The web frontend is usually served by Transmission (port 9091) while the
+// companion runs on a different port (e.g. 19091). Cross-origin requests are
+// therefore expected and must be allowed for all /api/ routes.
+app.use('/api', (_req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept');
+  if (_req.method === 'OPTIONS') {
+    res.sendStatus(204);
+    return;
+  }
+  next();
+});
+
 // ── API routes ────────────────────────────────────────────────────────────────
+
+// GET /api/config — lightweight endpoint used by the frontend as a same-origin
+// probe during companion discovery. Also advertises the companion's runtime config.
+app.get('/api/config', (_req, res) => {
+  res.json({
+    port: PORT,
+    transmissionUrl: process.env.TRANSMISSION_URL ?? 'http://localhost:9091/transmission/rpc',
+    pollIntervalMs: Number(process.env.POLLSERVICE_POLL_INTERVAL_MS ?? 1000)
+  });
+});
 
 // GET /api/appstate — returns the full persisted state.
 app.get('/api/appstate', async (_req, res) => {

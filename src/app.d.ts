@@ -10,6 +10,12 @@ declare global {
 		// interface PageState {}
 		// interface Platform {}
 	}
+
+	interface Window {
+		POLL_SERVICE_COMPANION_CONFIG?: {
+			companionPort: number;
+		};
+	}
 }
 
 export {};

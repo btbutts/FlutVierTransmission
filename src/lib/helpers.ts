@@ -3,7 +3,7 @@
 // src/lib/helpers.ts
 
 import { get } from 'svelte/store';
-import { writeAppStateGeoEntry } from './appstate';
+import { getCompanionBase, writeAppStateGeoEntry } from './appstate';
 import { serverPollingAvailable } from './stores';
 import type { GeoInfo, ShowCustomTooltipOptions, Torrent } from './types';
 
@@ -156,7 +156,8 @@ export async function ipGeoLookup(ip: string): Promise<GeoInfo | null> {
     if (get(serverPollingAvailable)) {
       // PollService mode: delegate to the companion server which has a DB-backed
       // 48-hour geo cache and manages the ip-api rate limit server-side.
-      const res = await fetch('/api/ipgeoinfo', {
+      const base = await getCompanionBase();
+      const res = await fetch(`${base}/api/ipgeoinfo`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ips: [ip] })
