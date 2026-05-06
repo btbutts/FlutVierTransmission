@@ -6,7 +6,7 @@
 	"scripts": {
 		"dev": "vite dev",
 		"build": "vite build",
-		"build:pollservice": "cd PollService && npm install --silent && npm run build",
+		"build:pollservice": "cd PollService && npm install --silent && npm rebuild better-sqlite3 && npm run build",
 		"build:all": "npm run build && npm run build:pollservice",
 		"build:release": "node scripts/build.mjs",
 		"publish:release": "node scripts/publish.mjs",
