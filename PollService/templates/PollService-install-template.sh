@@ -103,10 +103,10 @@ mkdir -p "${INSTALL_DIR}/web-frontend" "${INSTALL_DIR}/pollservice" "${INSTALL_D
 
 # ── Download release archives ─────────────────────────────────────────────────
 
-RELEASES_JSON_URL="https://raw.githubusercontent.com/{{REPO}}/master/releases.json"
+RELEASES_JSON_URL="https://api.github.com/repos/{{REPO}}/contents/releases.json"
 
 echo "Fetching releases manifest..."
-RELEASES_JSON=$(curl -fsSL "${RELEASES_JSON_URL}")
+RELEASES_JSON=$(curl -fsSL -H "Accept: application/vnd.github.raw+json" "${RELEASES_JSON_URL}")
 
 PS_VERSION=$(python3 - "${RELEASES_JSON}" <<'PYEOF'
 import json, sys
