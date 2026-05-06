@@ -185,6 +185,36 @@ This command:
 After this runs, `install.sh` and the app's Settings UI will immediately
 reflect the newly published versions on the next fetch.
 
+### Force re-publishing an existing version
+
+By default, `publish:release` aborts if the version being published is already
+recorded in `releases.json`. Pass `--force` (or `-force`) to bypass this guard:
+
+```bash
+npm run publish:release -- --force
+```
+
+With `--force`, instead of appending a duplicate entry, the script finds the
+existing record for that version and updates its URL fields in-place. The
+`latest` pointer is also updated.
+
+This is useful in two situations:
+
+- **Initial publish of a placeholder entry** — `releases.json` ships with
+  `v0.1.0` entries pre-populated but with empty `zipUrl`/`downloadUrl` fields.
+  The first-ever publish requires `--force` to fill those fields in.
+- **Partial run recovery** — the GitHub Release was created successfully but
+  the script failed before committing `releases.json`. Re-running with `--force`
+  skips re-creating the already-existing GitHub Release and re-writes the
+  manifest correctly.
+
+`--force` can be combined with `--only`:
+
+```bash
+npm run publish:release -- --force --only=pollservice
+npm run publish:release -- --force --only=web-frontend
+```
+
 ### Selective releases (one package only)
 
 When only one package has changed, use the `--only` flag to build and publish

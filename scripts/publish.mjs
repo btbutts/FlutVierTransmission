@@ -10,9 +10,20 @@
 //   - npm run build:release has been run and zip archives are present in releases/
 //
 // Usage:
-//   npm run publish:release                       publish both packages
-//   npm run publish:release -- --only=pollservice publish PollService only
+//   npm run publish:release                        publish both packages
+//   npm run publish:release -- --only=pollservice  publish PollService only
 //   npm run publish:release -- --only=web-frontend publish web-frontend only
+//   npm run publish:release -- --force             bypass the "already recorded" version guard
+//
+// --force behaviour:
+//   Normally publish:release aborts if the version is already present in
+//   releases.json (to prevent accidental double-publishing). With --force the
+//   existing entry is updated in-place rather than a duplicate being appended.
+//   Useful for: initial publish of a placeholder entry (empty zipUrl), or
+//   recovering from a partial run where the GitHub release was created but
+//   releases.json was never committed.
+//   --force can be combined with --only:
+//     npm run publish:release -- --force --only=pollservice
 //
 // How download URLs are determined:
 //   GitHub Release asset URLs follow the permanent, documented pattern:
@@ -34,14 +45,16 @@ const REPO_ROOT = resolve(__dirname, '..');
 function parseArgs() {
   const argv = process.argv.slice(2);
   let only = null;
+  let force = false;
   for (const arg of argv) {
     if (arg.startsWith('--only=')) only = arg.slice('--only='.length);
+    if (arg === '--force' || arg === '-force') force = true;
   }
   if (only && only !== 'pollservice' && only !== 'web-frontend') {
     console.error(`Unknown --only value "${only}". Valid options: pollservice | web-frontend`);
     process.exit(1);
   }
-  return { only };
+  return { only, force };
 }
 
 function readVersion(pkgPath) {
@@ -75,6 +88,17 @@ function versionAlreadyInManifest(releases, version) {
   return releases.some((r) => r.version === version);
 }
 
+// When --force is used and the version already exists, update that entry's
+// URL fields in-place instead of appending a duplicate.
+function upsertRelease(releases, newEntry) {
+  const existingIndex = releases.findIndex((r) => r.version === newEntry.version);
+  if (existingIndex !== -1) {
+    releases[existingIndex] = { ...releases[existingIndex], ...newEntry };
+  } else {
+    releases.push(newEntry);
+  }
+}
+
 // ── Preflight ─────────────────────────────────────────────────────────────────
 
 function checkGhAuth() {
@@ -89,7 +113,7 @@ function checkGhAuth() {
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 
-const { only } = parseArgs();
+const { only, force } = parseArgs();
 const publishWebFrontend = !only || only === 'web-frontend';
 const publishPollService = !only || only === 'pollservice';
 
@@ -111,9 +135,13 @@ if (publishWebFrontend) {
 
   // Guard: version already in manifest?
   if (versionAlreadyInManifest(manifest['web-frontend'].releases, version)) {
-    console.error(`[publish] Error: web-frontend v${version} is already recorded in releases.json.`);
-    console.error(`         Bump the version first: npm run bump -- --package=web-frontend --bump=patch`);
-    process.exit(1);
+    if (!force) {
+      console.error(`[publish] Error: web-frontend v${version} is already recorded in releases.json.`);
+      console.error(`         Bump the version first: npm run bump -- --package=web-frontend --bump=patch`);
+      console.error(`         Or re-publish the same version:  npm run publish:release -- --force`);
+      process.exit(1);
+    }
+    console.log(`[publish] --force: web-frontend v${version} already in manifest — updating entry in-place.`);
   }
 
   // Guard: zip produced by build:release?
@@ -136,8 +164,8 @@ if (publishWebFrontend) {
     );
   }
 
-  // Append to manifest in memory.
-  manifest['web-frontend'].releases.push({ version, tag, filename, downloadUrl });
+  // Append or update the manifest entry in memory.
+  upsertRelease(manifest['web-frontend'].releases, { version, tag, filename, downloadUrl });
   manifest['web-frontend'].latest = version;
   published.push(tag);
   console.log(`[publish] web-frontend v${version} → ${downloadUrl}`);
@@ -154,9 +182,13 @@ if (publishPollService) {
 
   // Guard: version already in manifest?
   if (versionAlreadyInManifest(manifest['PollService'].releases, version)) {
-    console.error(`[publish] Error: PollService v${version} is already recorded in releases.json.`);
-    console.error(`         Bump the version first: npm run bump -- --package=pollservice --bump=patch`);
-    process.exit(1);
+    if (!force) {
+      console.error(`[publish] Error: PollService v${version} is already recorded in releases.json.`);
+      console.error(`         Bump the version first: npm run bump -- --package=pollservice --bump=patch`);
+      console.error(`         Or re-publish the same version:  npm run publish:release -- --force`);
+      process.exit(1);
+    }
+    console.log(`[publish] --force: PollService v${version} already in manifest — updating entry in-place.`);
   }
 
   // Guard: zip produced by build:release?
@@ -179,8 +211,8 @@ if (publishPollService) {
     );
   }
 
-  // Append to manifest in memory.
-  manifest['PollService'].releases.push({ version, tag, filename, zipUrl });
+  // Append or update the manifest entry in memory.
+  upsertRelease(manifest['PollService'].releases, { version, tag, filename, zipUrl });
   manifest['PollService'].latest = version;
   published.push(tag);
   console.log(`[publish] PollService v${version} → ${zipUrl}`);
