@@ -53,5 +53,8 @@
     "@fontsource-variable/inter": "^5.2.8",
     "@fontsource/inter": "^5.2.8",
     "@iconify/svelte": "^5.2.1"
+  },
+  "overrides": {
+    "cookie": "^0.7.2"
   }
 }
