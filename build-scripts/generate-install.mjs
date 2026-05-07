@@ -1,19 +1,18 @@
 #!/usr/bin/env node
-// scripts/generate-install.mjs
+// build-scripts/generate-install.mjs
 //
 // Reads PollService/templates/PollService-install-template.sh, substitutes
 // the {{NODE_MAJOR}} and {{REPO}} placeholders from PollService/package.json
 // and releases.json respectively, and writes the result to
 // PollService/scripts/install.sh.
 //
-// Invoked automatically as Step 1 of scripts/build.mjs. Can also be run
+// Invoked automatically as Step 1 of build-scripts/build.mjs. Can also be run
 // directly during development:
 //
-//   node scripts/generate-install.mjs
-
+//   node build-scripts/generate-install.mjs
 import { readFileSync, writeFileSync } from 'fs';
-import { fileURLToPath } from 'url';
 import { dirname, resolve } from 'path';
+import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Regenerate: npm run build:release   (or: node scripts/generate-install.mjs)
+# Regenerate: npm run build:release   (or: node build-scripts/generate-install.mjs)
 #
 # PollService/scripts/install.sh
 # FlutVier PollService — Ubuntu/Debian installation script.

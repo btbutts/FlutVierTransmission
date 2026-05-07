@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// scripts/bump-version.mjs
+// build-scripts/bump-version.mjs
 //
 // Bumps the version field in the appropriate package.json file(s).
 // This sets the version that will be used the next time build:release and
@@ -18,10 +18,9 @@
 //   major  — x.y.z → (x+1).0.0
 //   minor  — x.y.z → x.(y+1).0
 //   patch  — x.y.z → x.y.(z+1)
-
 import { readFileSync, writeFileSync } from 'fs';
-import { fileURLToPath } from 'url';
 import { dirname, resolve } from 'path';
+import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -53,9 +52,12 @@ function applyBump(current, bump) {
   validateSemver(current);
   const [major, minor, patch] = current.split('.').map(Number);
   switch (bump) {
-    case 'major': return `${major + 1}.0.0`;
-    case 'minor': return `${major}.${minor + 1}.0`;
-    case 'patch': return `${major}.${minor}.${patch + 1}`;
+    case 'major':
+      return `${major + 1}.0.0`;
+    case 'minor':
+      return `${major}.${minor + 1}.0`;
+    case 'patch':
+      return `${major}.${minor}.${patch + 1}`;
     default:
       throw new Error(`Unknown bump type "${bump}". Valid options: major | minor | patch`);
   }
@@ -120,17 +122,9 @@ const targets = args.all ? ['pollservice', 'web-frontend'] : [args.package];
 
 for (const target of targets) {
   if (target === 'pollservice') {
-    updatePackageVersion(
-      resolve(REPO_ROOT, 'PollService', 'package.json'),
-      'pollservice',
-      args
-    );
+    updatePackageVersion(resolve(REPO_ROOT, 'PollService', 'package.json'), 'pollservice', args);
   } else if (target === 'web-frontend') {
-    updatePackageVersion(
-      resolve(REPO_ROOT, 'package.json'),
-      'web-frontend',
-      args
-    );
+    updatePackageVersion(resolve(REPO_ROOT, 'package.json'), 'web-frontend', args);
   } else {
     console.error(`Unknown package "${target}". Valid options: pollservice | web-frontend`);
     process.exit(1);

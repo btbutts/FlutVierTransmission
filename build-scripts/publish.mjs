@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// scripts/publish.mjs
+// build-scripts/publish.mjs
 //
 // Creates versioned GitHub releases, uploads the zip archives produced by
 // build:release, appends the new entries (with accurate download URLs) to
@@ -30,11 +30,10 @@
 //     https://github.com/{owner}/{repo}/releases/download/{tag}/{filename}
 //   Since we control the tag and filename, the URL is computed before the
 //   release is created and is guaranteed to match once the release exists.
-
 import { execFileSync } from 'child_process';
 import { existsSync, readFileSync, writeFileSync } from 'fs';
-import { fileURLToPath } from 'url';
 import { dirname, resolve } from 'path';
+import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -136,12 +135,18 @@ if (publishWebFrontend) {
   // Guard: version already in manifest?
   if (versionAlreadyInManifest(manifest['web-frontend'].releases, version)) {
     if (!force) {
-      console.error(`[publish] Error: web-frontend v${version} is already recorded in releases.json.`);
-      console.error(`         Bump the version first: npm run bump -- --package=web-frontend --bump=patch`);
+      console.error(
+        `[publish] Error: web-frontend v${version} is already recorded in releases.json.`
+      );
+      console.error(
+        `         Bump the version first: npm run bump -- --package=web-frontend --bump=patch`
+      );
       console.error(`         Or re-publish the same version:  npm run publish:release -- --force`);
       process.exit(1);
     }
-    console.log(`[publish] --force: web-frontend v${version} already in manifest — updating entry in-place.`);
+    console.log(
+      `[publish] --force: web-frontend v${version} already in manifest — updating entry in-place.`
+    );
   }
 
   // Guard: zip produced by build:release?
@@ -157,10 +162,16 @@ if (publishWebFrontend) {
   } else {
     console.log(`\n[publish] Creating GitHub release ${tag}...`);
     gh(
-      'release', 'create', tag, zipPath,
-      '--repo', repo,
-      '--title', `FlutVier Web Frontend v${version}`,
-      '--notes', `Web frontend build v${version}`
+      'release',
+      'create',
+      tag,
+      zipPath,
+      '--repo',
+      repo,
+      '--title',
+      `FlutVier Web Frontend v${version}`,
+      '--notes',
+      `Web frontend build v${version}`
     );
   }
 
@@ -183,12 +194,18 @@ if (publishPollService) {
   // Guard: version already in manifest?
   if (versionAlreadyInManifest(manifest['PollService'].releases, version)) {
     if (!force) {
-      console.error(`[publish] Error: PollService v${version} is already recorded in releases.json.`);
-      console.error(`         Bump the version first: npm run bump -- --package=pollservice --bump=patch`);
+      console.error(
+        `[publish] Error: PollService v${version} is already recorded in releases.json.`
+      );
+      console.error(
+        `         Bump the version first: npm run bump -- --package=pollservice --bump=patch`
+      );
       console.error(`         Or re-publish the same version:  npm run publish:release -- --force`);
       process.exit(1);
     }
-    console.log(`[publish] --force: PollService v${version} already in manifest — updating entry in-place.`);
+    console.log(
+      `[publish] --force: PollService v${version} already in manifest — updating entry in-place.`
+    );
   }
 
   // Guard: zip produced by build:release?
@@ -204,10 +221,16 @@ if (publishPollService) {
   } else {
     console.log(`\n[publish] Creating GitHub release ${tag}...`);
     gh(
-      'release', 'create', tag, zipPath,
-      '--repo', repo,
-      '--title', `FlutVier PollService v${version}`,
-      '--notes', `PollService companion v${version}`
+      'release',
+      'create',
+      tag,
+      zipPath,
+      '--repo',
+      repo,
+      '--title',
+      `FlutVier PollService v${version}`,
+      '--notes',
+      `PollService companion v${version}`
     );
   }
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// scripts/build.mjs
+// build-scripts/build.mjs
 //
 // Full build + packaging pipeline. Compiles both packages (or one, via --only),
 // regenerates PollService/scripts/install.sh from its template, and produces
@@ -12,11 +12,10 @@
 //   npm run build:release                       build both packages
 //   npm run build:release -- --only=pollservice build PollService only
 //   npm run build:release -- --only=web-frontend build web-frontend only
-
 import { execSync } from 'child_process';
 import { existsSync, mkdirSync, readFileSync } from 'fs';
-import { fileURLToPath } from 'url';
 import { dirname, resolve } from 'path';
+import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -55,7 +54,7 @@ const buildPollService = !only || only === 'pollservice';
 // This ensures the generated script is always in sync regardless of which
 // packages are being built.
 console.log('\n[build] Step 1 — Generating PollService/scripts/install.sh from template...');
-run('node scripts/generate-install.mjs');
+run('node build-scripts/generate-install.mjs');
 
 // Step 2 — Web frontend
 if (buildWebFrontend) {
@@ -69,7 +68,9 @@ if (buildWebFrontend) {
   run('npm run build');
 
   if (!existsSync(distDir)) {
-    console.error(`[build] Error: expected dist/web-frontend/ after vite build but it was not found.`);
+    console.error(
+      `[build] Error: expected dist/web-frontend/ after vite build but it was not found.`
+    );
     process.exit(1);
   }
 
@@ -92,7 +93,9 @@ if (buildPollService) {
   run('npm run build:pollservice');
 
   if (!existsSync(distDir)) {
-    console.error(`[build] Error: expected dist/pollservice/ after tsc build but it was not found.`);
+    console.error(
+      `[build] Error: expected dist/pollservice/ after tsc build but it was not found.`
+    );
     process.exit(1);
   }
 

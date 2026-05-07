@@ -306,13 +306,13 @@ The template supports two substitution placeholders:
 | `{{NODE_MAJOR}}` | `PollService/package.json` → `devDependencies["@types/node"]` | `22` |
 | `{{REPO}}` | `releases.json` → `repo` | `btbutts/FlutVierTransmission` |
 
-Substitution is performed by `scripts/generate-install.mjs`, which runs
+Substitution is performed by `build-scripts/generate-install.mjs`, which runs
 automatically as the first step of `build:release`. To regenerate `install.sh`
 on its own without triggering a full build (useful when only the template has
 changed):
 
 ```bash
-node scripts/generate-install.mjs
+node build-scripts/generate-install.mjs
 ```
 
 ---
