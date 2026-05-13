@@ -197,10 +197,9 @@ get_install_helper() {
 	# Step 2: Check local file + SHA verification
 	if [[ -f "${LOCAL_HELPER_PY}" ]]; then
 		# Extract the remote SHA from metadata
-		remote_sha=$(printf '%s\n' "${py_helper_metadata_json}" |
-			grep -w '"sha"' |
-			head -1 |
-			cut -d'"' -f4)
+		remote_sha=$(
+			python3 "${LOCAL_HELPER_PY}" get-json-key-value "${py_helper_metadata_json}" "sha"
+		)
 
 		if [[ -n "${remote_sha}" ]]; then
 			# Compute exact git blob SHA that GitHub uses
@@ -221,10 +220,9 @@ get_install_helper() {
 	# This block runs when the file is absent or the SHA check fails.
 	# It extracts the "content" field from the metadata JSON, which is
 	# base64-encoded by GitHub API, and decodes it to the target file.
-	raw_content_extracted=$(printf '%s\n' "${py_helper_metadata_json}" |
-		grep -w '"content"' |
-		head -1 |
-		cut -d'"' -f4)
+	raw_content_extracted=$(
+		python3 "${LOCAL_HELPER_PY}" get-json-key-value "${py_helper_metadata_json}" "content"
+	)
 	content_base64=$(printf '%s' "$raw_content_extracted" | sed 's/\\n//g')
 
 	if [[ -z "${content_base64}" ]]; then

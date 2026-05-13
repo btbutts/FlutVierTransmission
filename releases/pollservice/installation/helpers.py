@@ -116,6 +116,14 @@ def parse_releases_manifest(releases_json_str: str):
         print(f"Error parsing releases manifest: {e}", file=sys.stderr)
         sys.exit(1)
 
+def get_json_key_value(json_string: str, json_key: str) -> str:
+    """Extract a single key value from JSON string. Returns '' on error/missing."""
+    try:
+        data = json.loads(json_string)
+        return data.get(json_key, '')
+    except (json.JSONDecodeError, TypeError, ValueError):
+        return ''
+
 
 if __name__ == "__main__":
     cmd = sys.argv[1]
@@ -136,6 +144,14 @@ if __name__ == "__main__":
     elif cmd == "parse-releases-manifest":
         ps_ver, ps_zip = parse_releases_manifest(sys.argv[2])
         print(f"{ps_ver}\n{ps_zip}")
+
+    elif cmd == "get-json-key-value":
+        if len(sys.argv) != 4:
+            print("Error: get-json-key-value requires JSON and key arguments", file=sys.stderr)
+            sys.exit(1)
+        json_str = sys.argv[2]
+        key = sys.argv[3]
+        print(get_json_key_value(json_str, key))
 
     else:
         print(f"Unknown command: {cmd}", file=sys.stderr)
