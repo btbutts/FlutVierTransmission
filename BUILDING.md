@@ -76,7 +76,7 @@ automatically. No extra configuration is needed.
 ## Building (compile only)
 
 The following commands compile source files into `dist/` but do **not** create
-release archives or update `releases.json`. Use these during development to
+release archives or update `releases/releases.json`. Use these during development to
 verify builds succeed without going through the full release pipeline.
 
 ```bash
@@ -136,7 +136,7 @@ npm run bump -- --all --bump=major
 npm run bump -- --package=pollservice --set=1.0.0
 ```
 
-> `releases.json` is **not** touched by `bump`. It is only updated after a
+> `releases/releases.json` is **not** touched by `bump`. It is only updated after a
 > successful `publish:release` run.
 
 ---
@@ -153,8 +153,8 @@ npm run build:release
 
 This command:
 
-1. Regenerates `PollService/scripts/install.sh` from the template, substituting
-   `NODE_MAJOR` from `PollService/package.json` and `REPO` from `releases.json`
+1. Regenerates `releases/pollservice/installation/install.sh` from the template, substituting
+   `NODE_MAJOR` from `PollService/package.json` and `REPO` from `releases/releases.json`
 2. Compiles the web-frontend → `dist/web-frontend/`
 3. Zips `dist/web-frontend/` → `releases/web-frontend/flutvier-web-frontend-v{ver}.zip`
 4. Compiles PollService → `dist/pollservice/`
@@ -174,12 +174,12 @@ Requires `gh auth login` to have been completed previously.
 This command:
 
 1. Verifies `gh` CLI is authenticated
-2. Checks that neither version is already recorded in `releases.json`
+2. Checks that neither version is already recorded in `releases/releases.json`
    (prevents accidental double-publishing the same version)
 3. Creates a GitHub Release for each package with its versioned tag and zip archive
 4. Constructs the deterministic GitHub asset download URLs for each archive
-5. Appends the new release entries to `releases.json` and updates `latest`
-6. Commits `releases.json` and `PollService/scripts/install.sh` to `master`
+5. Appends the new release entries to `releases/releases.json` and updates `latest`
+6. Commits `releases/releases.json` and `releases/pollservice/installation/install.sh` to `master`
 7. Pushes to `master`
 
 After this runs, `install.sh` and the app's Settings UI will immediately
@@ -188,7 +188,7 @@ reflect the newly published versions on the next fetch.
 ### Force re-publishing an existing version
 
 By default, `publish:release` aborts if the version being published is already
-recorded in `releases.json`. Pass `--force` (or `-force`) to bypass this guard:
+recorded in `releases/releases.json`. Pass `--force` (or `-force`) to bypass this guard:
 
 ```bash
 npm run publish:release -- --force
@@ -200,11 +200,11 @@ existing record for that version and updates its URL fields in-place. The
 
 This is useful in two situations:
 
-- **Initial publish of a placeholder entry** — `releases.json` ships with
+- **Initial publish of a placeholder entry** — `releases/releases.json` ships with
   `v0.1.0` entries pre-populated but with empty `zipUrl`/`downloadUrl` fields.
   The first-ever publish requires `--force` to fill those fields in.
 - **Partial run recovery** — the GitHub Release was created successfully but
-  the script failed before committing `releases.json`. Re-running with `--force`
+  the script failed before committing `releases/releases.json`. Re-running with `--force`
   skips re-creating the already-existing GitHub Release and re-writes the
   manifest correctly.
 
@@ -263,7 +263,7 @@ npm run publish:release
 
 ## Rollback
 
-To revert users to a previous release, edit `releases.json` and change the
+To revert users to a previous release, edit `releases/releases.json` and change the
 `latest` field under the affected package to any prior version string that
 exists in its `releases` array:
 
@@ -277,12 +277,12 @@ exists in its `releases` array:
 Then commit and push:
 
 ```bash
-git add releases.json
+git add releases/releases.json
 git commit -m "chore: revert PollService latest to v0.1.0"
 git push
 ```
 
-`install.sh` and the Settings UI fetch `releases.json` fresh on each use, so
+`install.sh` and the Settings UI fetch `releases/releases.json` fresh on each use, so
 they pick up the rollback immediately on the next run or page open. No rebuild
 or republish is needed.
 
@@ -290,7 +290,7 @@ or republish is needed.
 
 ## The install.sh template system
 
-`PollService/scripts/install.sh` is a **generated file**. Do not edit it
+`releases/pollservice/installation/install.sh` is a **generated file**. Do not edit it
 directly — changes will be overwritten on the next `build:release` run.
 
 Edit the source template instead:
@@ -304,7 +304,7 @@ The template supports two substitution placeholders:
 | Placeholder | Source | Resolved example |
 |---|---|---|
 | `{{NODE_MAJOR}}` | `PollService/package.json` → `devDependencies["@types/node"]` | `22` |
-| `{{REPO}}` | `releases.json` → `repo` | `btbutts/FlutVierTransmission` |
+| `{{REPO}}` | `releases/releases.json` → `repo` | `btbutts/FlutVierTransmission` |
 
 Substitution is performed by `build-scripts/generate-install.mjs`, which runs
 automatically as the first step of `build:release`. To regenerate `install.sh`
@@ -317,12 +317,12 @@ node build-scripts/generate-install.mjs
 
 ---
 
-## releases.json structure
+## releases/releases.json structure
 
-`releases.json` is the release manifest consumed by:
+`releases/releases.json` is the release manifest consumed by:
 
-- `PollService/scripts/install.sh` — determines which release archives to
-  download and where
+- `releases/pollservice/installation/install.sh` — determines which release
+  archive to download and where
 - `src/lib/github.ts` / Settings UI — surfaces installer info and version
   details to the user
 

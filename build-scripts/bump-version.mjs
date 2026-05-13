@@ -3,7 +3,7 @@
 //
 // Bumps the version field in the appropriate package.json file(s).
 // This sets the version that will be used the next time build:release and
-// publish:release are run. releases.json is NOT modified here — it is only
+// publish:release are run. releases/releases.json is NOT modified here — it is only
 // updated by publish:release after a successful GitHub release upload.
 //
 // Usage:

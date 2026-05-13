@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """
-FlutVier PollService installation helper.
-All JSON / config parsing logic that used to be embedded in the bash script.
+FlutVier PollService installation helper script
+This script provides functions for validating Transmission's
+settings.json, extracting RPC configuration, and others that
+are directly called from our primary bash script `install.sh`
 """
 
 import json
@@ -21,7 +23,7 @@ def validate_transmission_config(config_path: str) -> None:
         sys.exit(1)
 
     try:
-        with open(config_path) as f:
+        with open(config_path, encoding='utf-8') as f:
             cfg = json.load(f)
     except json.JSONDecodeError as exc:
         print(f"Error: '{config_path}' is not valid JSON: {exc}", file=sys.stderr)
@@ -32,7 +34,7 @@ def validate_transmission_config(config_path: str) -> None:
     port = cfg.get('rpc-port')
     if port is None:
         errors.append("  - 'rpc-port' key is missing")
-    elif not isinstance(port, int) or not (1 <= port <= 65535):
+    elif not isinstance(port, int) or not 1 <= port <= 65535:
         errors.append(f"  - 'rpc-port' value {port!r} is not a valid port number (1-65535)")
 
     if 'rpc-bind-address' not in cfg:
@@ -63,7 +65,7 @@ def is_valid_transmission_config(config_path: str) -> bool:
     try:
         if not os.path.isfile(config_path) or not os.access(config_path, os.R_OK):
             return False
-        with open(config_path) as f:
+        with open(config_path, encoding='utf-8') as f:
             cfg = json.load(f)
         port = cfg.get('rpc-port')
         return isinstance(port, int) and 1 <= port <= 65535
@@ -71,49 +73,46 @@ def is_valid_transmission_config(config_path: str) -> bool:
         return False
 
 
-def select_most_recent_config(paths: list[str]) -> str:
+def select_most_recent_config(paths_list: list[str]) -> str:
     """Return the most recently modified path from a list (used in find_transmission_settings)."""
-    if not paths:
+    if not paths_list:
         return ""
     try:
-        return max(paths, key=lambda p: os.path.getmtime(p))
-    except Exception:
+        return max(paths_list, key=os.path.getmtime)
+    except OSError:
         return ""
 
 
 def extract_rpc_config(config_path: str) -> str:
     """Extract rpc-port|rpc-bind-address|rpc-url (with suffix fix)."""
     try:
-        with open(config_path) as f:
+        with open(config_path, encoding='utf-8') as f:
             cfg = json.load(f)
+        if not isinstance(cfg, dict):
+            raise ValueError("Transmission config must be a JSON object")
         port = cfg.get('rpc-port', 9091)
         bind = cfg.get('rpc-bind-address', '0.0.0.0')
         suffix = cfg.get('rpc-url', '/transmission/')
         if not suffix.endswith('rpc'):
             suffix = suffix.rstrip('/') + '/rpc'
         return f"{port}|{bind}|{suffix}"
-    except Exception:
+    except (OSError, json.JSONDecodeError, ValueError):
         print("Error reading settings.json — using defaults.", file=sys.stderr)
         sys.exit(1)
 
 
 def parse_releases_manifest(releases_json_str: str):
-    """Parse releases.json and return all needed values for download_archives."""
+    """Parse releases/releases.json and return PollService values needed for download_archives."""
     try:
         d = json.loads(releases_json_str)
 
         # PollService
         ps_latest = d['PollService']['latest']
         ps_entry = next(r for r in d['PollService']['releases'] if r['version'] == ps_latest)
-        ps_zip = ps_entry['zipUrl']
+        ps_zip_url = ps_entry['zipUrl']
 
-        # Web frontend
-        wf_latest = d['web-frontend']['latest']
-        wf_entry = next(r for r in d['web-frontend']['releases'] if r['version'] == wf_latest)
-        wf_zip = wf_entry['downloadUrl']
-
-        return ps_latest, wf_latest, ps_zip, wf_zip
-    except Exception as e:
+        return ps_latest, ps_zip_url
+    except (OSError, json.JSONDecodeError, KeyError, StopIteration, TypeError, ValueError) as e:
         print(f"Error parsing releases manifest: {e}", file=sys.stderr)
         sys.exit(1)
 
@@ -135,8 +134,8 @@ if __name__ == "__main__":
         print(extract_rpc_config(sys.argv[2]))
 
     elif cmd == "parse-releases-manifest":
-        ps_ver, wf_ver, ps_zip, wf_zip = parse_releases_manifest(sys.argv[2])
-        print(f"{ps_ver}\n{wf_ver}\n{ps_zip}\n{wf_zip}")
+        ps_ver, ps_zip = parse_releases_manifest(sys.argv[2])
+        print(f"{ps_ver}\n{ps_zip}")
 
     else:
         print(f"Unknown command: {cmd}", file=sys.stderr)

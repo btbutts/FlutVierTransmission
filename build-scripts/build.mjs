@@ -2,10 +2,10 @@
 // build-scripts/build.mjs
 //
 // Full build + packaging pipeline. Compiles both packages (or one, via --only),
-// regenerates PollService/scripts/install.sh from its template, and produces
+// regenerates releases/pollservice/installation/install.sh from its template, and produces
 // versioned zip archives in releases/ for use by publish:release.
 //
-// This script does NOT commit anything and does NOT touch releases.json.
+// This script does NOT commit anything and does NOT touch releases/releases.json.
 // Run npm run publish:release after this to upload and record the releases.
 //
 // Usage:
@@ -53,7 +53,7 @@ const buildPollService = !only || only === 'pollservice';
 // Step 1 — Always regenerate install.sh from the template.
 // This ensures the generated script is always in sync regardless of which
 // packages are being built.
-console.log('\n[build] Step 1 — Generating PollService/scripts/install.sh from template...');
+console.log('\n[build] Step 1 — Generating releases/pollservice/installation/install.sh from template...');
 run('node build-scripts/generate-install.mjs');
 
 // Step 2 — Web frontend

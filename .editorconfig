@@ -1,0 +1,15 @@
+root = true
+
+# Shell scripts normally use spaces for indentation,
+# except the files listed below
+[*.sh]
+indent_style = space
+indent_size = 2
+
+[*PollService-install-template.sh]
+indent_style = tab
+indent_size = 2
+
+[*install.sh]
+indent_style = tab
+indent_size = 2

@@ -3,8 +3,8 @@
 //
 // Reads PollService/templates/PollService-install-template.sh, substitutes
 // the {{NODE_MAJOR}} and {{REPO}} placeholders from PollService/package.json
-// and releases.json respectively, and writes the result to
-// PollService/scripts/install.sh.
+// and releases/releases.json respectively, and writes the result to
+// releases/pollservice/installation/install.sh.
 //
 // Invoked automatically as Step 1 of build-scripts/build.mjs. Can also be run
 // directly during development:
@@ -39,13 +39,14 @@ function extractNodeMajor() {
   return major;
 }
 
-// ── Extract REPO from releases.json ──────────────────────────────────────────
+// ── Extract REPO from releases/releases.json ──────────────────────────────────
+
 
 function extractRepo() {
-  const releasesPath = resolve(REPO_ROOT, 'releases.json');
+  const releasesPath = resolve(REPO_ROOT, 'releases/releases.json');
   const releases = JSON.parse(readFileSync(releasesPath, 'utf8'));
   if (!releases.repo) {
-    throw new Error('releases.json is missing the top-level "repo" field.');
+    throw new Error('releases/releases.json is missing the top-level "repo" field.');
   }
   return releases.repo;
 }
@@ -61,7 +62,7 @@ const templatePath = resolve(
   'templates',
   'PollService-install-template.sh'
 );
-const outputPath = resolve(REPO_ROOT, 'PollService', 'scripts', 'install.sh');
+const outputPath = resolve(REPO_ROOT, 'releases', 'pollservice', 'installation', 'install.sh');
 
 let template = readFileSync(templatePath, 'utf8');
 template = template.replaceAll('{{NODE_MAJOR}}', nodeMajor);
@@ -92,5 +93,5 @@ template = template.replace(
 writeFileSync(outputPath, template, { mode: 0o755 });
 
 console.log(
-  `[generate-install] NODE_MAJOR=${nodeMajor}, REPO=${repo} → PollService/scripts/install.sh`
+  `[generate-install] NODE_MAJOR=${nodeMajor}, REPO=${repo} → releases/pollservice/installation/install.sh`
 );

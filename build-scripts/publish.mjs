@@ -3,7 +3,7 @@
 //
 // Creates versioned GitHub releases, uploads the zip archives produced by
 // build:release, appends the new entries (with accurate download URLs) to
-// releases.json, and commits + pushes the updated manifest.
+// releases/releases.json, and commits + pushes the updated manifest.
 //
 // Prerequisites:
 //   - gh CLI installed and authenticated  (gh auth login)
@@ -17,11 +17,11 @@
 //
 // --force behaviour:
 //   Normally publish:release aborts if the version is already present in
-//   releases.json (to prevent accidental double-publishing). With --force the
+//   releases/releases.json (to prevent accidental double-publishing). With --force the
 //   existing entry is updated in-place rather than a duplicate being appended.
 //   Useful for: initial publish of a placeholder entry (empty zipUrl), or
 //   recovering from a partial run where the GitHub release was created but
-//   releases.json was never committed.
+//   releases/releases.json was never committed.
 //   --force can be combined with --only:
 //     npm run publish:release -- --force --only=pollservice
 //
@@ -118,7 +118,7 @@ const publishPollService = !only || only === 'pollservice';
 
 checkGhAuth();
 
-const releasesJsonPath = resolve(REPO_ROOT, 'releases.json');
+const releasesJsonPath = resolve(REPO_ROOT, 'releases/releases.json');
 const manifest = JSON.parse(readFileSync(releasesJsonPath, 'utf8'));
 const repo = manifest.repo;
 const published = [];
@@ -136,7 +136,7 @@ if (publishWebFrontend) {
   if (versionAlreadyInManifest(manifest['web-frontend'].releases, version)) {
     if (!force) {
       console.error(
-        `[publish] Error: web-frontend v${version} is already recorded in releases.json.`
+        `[publish] Error: web-frontend v${version} is already recorded in releases/releases.json.`
       );
       console.error(
         `         Bump the version first: npm run bump -- --package=web-frontend --bump=patch`
@@ -195,7 +195,7 @@ if (publishPollService) {
   if (versionAlreadyInManifest(manifest['PollService'].releases, version)) {
     if (!force) {
       console.error(
-        `[publish] Error: PollService v${version} is already recorded in releases.json.`
+        `[publish] Error: PollService v${version} is already recorded in releases/releases.json.`
       );
       console.error(
         `         Bump the version first: npm run bump -- --package=pollservice --bump=patch`
@@ -241,15 +241,15 @@ if (publishPollService) {
   console.log(`[publish] PollService v${version} → ${zipUrl}`);
 }
 
-// ── Write updated releases.json and commit ────────────────────────────────────
+// ── Write updated releases/releases.json and commit ────────────────────────────────────
 
 writeFileSync(releasesJsonPath, JSON.stringify(manifest, null, 2) + '\n');
-console.log('\n[publish] Updated releases.json');
+console.log('\n[publish] Updated releases/releases.json');
 
-git('add', 'releases.json', 'PollService/scripts/install.sh');
+git('add', 'releases/releases.json', 'releases/pollservice/installation/install.sh');
 
 const commitMsg = `chore: publish ${published.join(' + ')}`;
 git('commit', '-m', commitMsg);
 git('push');
 
-console.log(`\n[publish] Done — committed and pushed releases.json.\n`);
+console.log(`\n[publish] Done — committed and pushed releases/releases.json.\n`);

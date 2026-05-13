@@ -2,7 +2,7 @@
   "repo": "btbutts/FlutVierTransmission",
   "PollService": {
     "latest": "0.1.0",
-    "installerUrl": "https://raw.githubusercontent.com/btbutts/FlutVierTransmission/master/PollService/scripts/install.sh",
+    "installerUrl": "https://raw.githubusercontent.com/btbutts/FlutVierTransmission/master/releases/pollservice/installation/install.sh",
     "releases": [
       {
         "version": "0.1.0",
